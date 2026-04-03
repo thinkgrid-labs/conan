@@ -1,0 +1,21 @@
+id: anthropic
+name: Anthropic / Claude
+version: "1.0.0"
+risk_base: 60
+privacy_policy_url: "https://www.anthropic.com/legal/privacy"
+domains:
+  - api.anthropic.com
+  - anthropic.com
+  - claude.ai
+process_names:
+  - claude
+  - anthropic
+http_patterns:
+  user_agents:
+    - anthropic-sdk-python
+    - anthropic-sdk-typescript
+dlp_patterns:
+  - id: anthropic_api_key
+    pattern: "sk-ant-[A-Za-z0-9\\-_]{20,}"
+    severity: critical
+tags: [llm, cloud, paid, anthropic]

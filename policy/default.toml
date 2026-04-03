@@ -1,0 +1,37 @@
+version = "1.0"
+# Default action when no rule matches: "allow" | "warn" | "block"
+mode = "warn"
+
+# ─── Rules (evaluated top-to-bottom, first match wins) ────────────────────────
+
+[[rules]]
+id = "allow-local-models"
+description = "Local models (ollama, localai) are always allowed."
+trigger = "ai_detected"
+tags = ["local"]
+action = "allow"
+
+[[rules]]
+id = "block-dlp-critical"
+description = "Block any AI call where a critical secret (API key, credential) is detected in the payload."
+trigger = "dlp_match"
+action = "block"
+notify = ["slack"]
+
+[[rules]]
+id = "warn-unapproved-cloud-ai"
+description = "Warn when any unapproved cloud AI service is used."
+trigger = "ai_detected"
+# Add your approved service IDs here to suppress warnings for them:
+# exclude_ids = ["openai", "anthropic"]
+action = "warn"
+
+# ─── Notification channels ────────────────────────────────────────────────────
+
+[notifications.slack]
+# Set via env var: CONAN_SLACK_WEBHOOK
+webhook_url = "${CONAN_SLACK_WEBHOOK}"
+
+[notifications.discord]
+# Set via env var: CONAN_DISCORD_WEBHOOK
+webhook_url = "${CONAN_DISCORD_WEBHOOK}"

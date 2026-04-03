@@ -1,0 +1,73 @@
+[workspace]
+members = [
+    "crates/conan-core",
+    "crates/conan-net",
+    "crates/conan-os",
+    "crates/conan-db",
+    ".",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["conan contributors"]
+license = "Apache-2.0"
+repository = "https://github.com/conan-ai/conan"
+
+[workspace.dependencies]
+# async
+tokio = { version = "1", features = ["full"] }
+# serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+toml = "0.8"
+# error handling
+thiserror = "1"
+anyhow = "1"
+# logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# time
+chrono = { version = "0.4", features = ["serde"] }
+# regex
+regex = "1"
+# async traits
+async-trait = "0.1"
+# channels
+tokio-stream = "0.1"
+# ids
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[package]
+name = "conan"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Detect, inspect, and govern AI service usage across your infrastructure."
+
+[[bin]]
+name = "conan"
+path = "src/main.rs"
+
+[dependencies]
+conan-core = { path = "crates/conan-core" }
+conan-net  = { path = "crates/conan-net" }
+conan-os   = { path = "crates/conan-os" }
+conan-db   = { path = "crates/conan-db" }
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+toml.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+chrono.workspace = true
+clap = { version = "4", features = ["derive", "env"] }
+directories = "5"
+libc = "0.2"
+async-trait.workspace = true
+regex.workspace = true

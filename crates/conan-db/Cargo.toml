@@ -1,0 +1,19 @@
+[package]
+name = "conan-db"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "SQLite persistence layer for conan findings and signatures."
+
+[dependencies]
+conan-core = { path = "../conan-core" }
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+rusqlite = { version = "0.31", features = ["bundled", "chrono", "uuid"] }

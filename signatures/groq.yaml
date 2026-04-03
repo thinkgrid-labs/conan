@@ -1,0 +1,19 @@
+id: groq
+name: Groq
+version: "1.0.0"
+risk_base: 55
+privacy_policy_url: "https://groq.com/privacy-policy"
+domains:
+  - api.groq.com
+  - groq.com
+process_names:
+  - groq
+http_patterns:
+  user_agents:
+    - groq-python
+    - groq-typescript
+dlp_patterns:
+  - id: groq_api_key
+    pattern: "gsk_[A-Za-z0-9]{52}"
+    severity: critical
+tags: [llm, cloud, paid, inference]

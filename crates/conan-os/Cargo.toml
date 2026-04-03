@@ -1,0 +1,23 @@
+[package]
+name = "conan-os"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "OS-level scanning: processes, shell history, browser history, codebase."
+
+[dependencies]
+conan-core = { path = "../conan-core" }
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+chrono.workspace = true
+async-trait.workspace = true
+regex.workspace = true
+sysinfo = "0.30"
+walkdir = "2"
+dirs = "5"
+rusqlite = { version = "0.31", features = ["bundled"] }

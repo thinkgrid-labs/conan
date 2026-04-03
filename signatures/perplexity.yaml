@@ -1,0 +1,14 @@
+id: perplexity
+name: Perplexity AI
+version: "1.0.0"
+risk_base: 50
+privacy_policy_url: "https://www.perplexity.ai/privacy"
+domains:
+  - api.perplexity.ai
+  - perplexity.ai
+process_names: []
+dlp_patterns:
+  - id: perplexity_api_key
+    pattern: "pplx-[A-Za-z0-9]{48}"
+    severity: critical
+tags: [llm, cloud, paid, search]

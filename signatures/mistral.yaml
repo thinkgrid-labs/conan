@@ -1,0 +1,19 @@
+id: mistral
+name: Mistral AI
+version: "1.0.0"
+risk_base: 55
+privacy_policy_url: "https://mistral.ai/privacy"
+domains:
+  - api.mistral.ai
+  - mistral.ai
+process_names:
+  - mistral
+http_patterns:
+  user_agents:
+    - mistralai-client-python
+    - "@mistralai/mistralai"
+dlp_patterns:
+  - id: mistral_api_key
+    pattern: "[A-Za-z0-9]{32}"
+    severity: high
+tags: [llm, cloud, paid, open-weights]

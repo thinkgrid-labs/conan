@@ -1,0 +1,16 @@
+id: ollama
+name: Ollama (Local LLM)
+version: "1.0.0"
+risk_base: 20
+domains:
+  - localhost
+  - 127.0.0.1
+  - 0.0.0.0
+process_names:
+  - ollama
+  - ollama_llama_server
+http_patterns:
+  user_agents:
+    - ollama
+dlp_patterns: []
+tags: [llm, local, open-source, free]

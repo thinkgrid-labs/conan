@@ -1,0 +1,25 @@
+[package]
+name = "conan-net"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Network traffic inspection via pcap and DNS for conan."
+
+[dependencies]
+conan-core = { path = "../conan-core" }
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+chrono.workspace = true
+async-trait.workspace = true
+regex.workspace = true
+# pcap is optional; feature-gated so the binary compiles without libpcap installed
+pcap = { version = "1", optional = true }
+
+[features]
+default = []
+capture = ["pcap"]

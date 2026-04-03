@@ -1,0 +1,20 @@
+id: cohere
+name: Cohere
+version: "1.0.0"
+risk_base: 55
+privacy_policy_url: "https://cohere.com/privacy"
+domains:
+  - api.cohere.ai
+  - api.cohere.com
+  - cohere.com
+process_names:
+  - cohere
+http_patterns:
+  user_agents:
+    - cohere-python-sdk
+    - cohere-typescript-sdk
+dlp_patterns:
+  - id: cohere_api_key
+    pattern: "[A-Za-z0-9]{40}"
+    severity: high
+tags: [llm, cloud, paid]

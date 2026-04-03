@@ -1,0 +1,12 @@
+id: localai
+name: LocalAI
+version: "1.0.0"
+risk_base: 15
+domains:
+  - localhost
+  - 127.0.0.1
+process_names:
+  - local-ai
+  - localai
+dlp_patterns: []
+tags: [llm, local, open-source, free]

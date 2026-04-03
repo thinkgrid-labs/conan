@@ -1,0 +1,26 @@
+id: openai
+name: OpenAI
+version: "1.0.0"
+risk_base: 65
+privacy_policy_url: "https://openai.com/policies/privacy"
+domains:
+  - api.openai.com
+  - openai.com
+  - oaiusercontent.com
+  - chatgpt.com
+process_names:
+  - openai
+  - chatgpt
+http_patterns:
+  user_agents:
+    - openai-python
+    - openai-node
+    - openai-go
+dlp_patterns:
+  - id: openai_api_key
+    pattern: "sk-[A-Za-z0-9]{20,}"
+    severity: critical
+  - id: openai_org_id
+    pattern: "org-[A-Za-z0-9]{24}"
+    severity: high
+tags: [llm, cloud, paid, openai]
