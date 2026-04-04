@@ -104,6 +104,164 @@ impl Policy {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn rule(
+        id: &str,
+        trigger: PolicyTrigger,
+        action: PolicyAction,
+        exclude_ids: &[&str],
+        tags: &[&str],
+    ) -> PolicyRule {
+        PolicyRule {
+            id: id.to_string(),
+            description: None,
+            trigger,
+            exclude_ids: exclude_ids.iter().map(|s| s.to_string()).collect(),
+            tags: tags.iter().map(|s| s.to_string()).collect(),
+            action,
+            notify: vec![],
+        }
+    }
+
+    fn policy(mode: PolicyAction, rules: Vec<PolicyRule>) -> Policy {
+        Policy {
+            version: "1.0".to_string(),
+            mode,
+            rules,
+            notifications: Notifications::default(),
+        }
+    }
+
+    #[test]
+    fn default_policy_warns_with_no_rules() {
+        let p = Policy::default();
+        let (action, rule_id) = p.evaluate("openai", &[], false);
+        assert_eq!(action, PolicyAction::Warn);
+        assert!(rule_id.is_none());
+    }
+
+    #[test]
+    fn first_matching_rule_wins() {
+        let p = policy(
+            PolicyAction::Warn,
+            vec![
+                rule("block", PolicyTrigger::AiDetected, PolicyAction::Block, &[], &[]),
+                rule("warn", PolicyTrigger::AiDetected, PolicyAction::Warn, &[], &[]),
+            ],
+        );
+        let (action, id) = p.evaluate("openai", &[], false);
+        assert_eq!(action, PolicyAction::Block);
+        assert_eq!(id.as_deref(), Some("block"));
+    }
+
+    #[test]
+    fn exclude_ids_skips_matching_rule() {
+        let p = policy(
+            PolicyAction::Warn,
+            vec![rule(
+                "block-unapproved",
+                PolicyTrigger::AiDetected,
+                PolicyAction::Block,
+                &["openai"],
+                &[],
+            )],
+        );
+        // excluded → falls through to default warn
+        let (action, _) = p.evaluate("openai", &[], false);
+        assert_eq!(action, PolicyAction::Warn);
+
+        // not excluded → gets blocked
+        let (action, _) = p.evaluate("anthropic", &[], false);
+        assert_eq!(action, PolicyAction::Block);
+    }
+
+    #[test]
+    fn tag_filter_only_matches_tagged_signatures() {
+        let p = policy(
+            PolicyAction::Warn,
+            vec![rule(
+                "allow-local",
+                PolicyTrigger::AiDetected,
+                PolicyAction::Allow,
+                &[],
+                &["local"],
+            )],
+        );
+        let (action, _) = p.evaluate("ollama", &["local".to_string()], false);
+        assert_eq!(action, PolicyAction::Allow);
+
+        let (action, _) = p.evaluate("openai", &["cloud".to_string()], false);
+        assert_eq!(action, PolicyAction::Warn);
+    }
+
+    #[test]
+    fn dlp_trigger_skipped_without_dlp() {
+        let p = policy(
+            PolicyAction::Warn,
+            vec![rule(
+                "block-dlp",
+                PolicyTrigger::DlpMatch,
+                PolicyAction::Block,
+                &[],
+                &[],
+            )],
+        );
+        // no DLP → rule skipped, default warn
+        let (action, _) = p.evaluate("openai", &[], false);
+        assert_eq!(action, PolicyAction::Warn);
+
+        // has DLP → rule fires
+        let (action, _) = p.evaluate("openai", &[], true);
+        assert_eq!(action, PolicyAction::Block);
+    }
+
+    #[test]
+    fn any_trigger_always_fires() {
+        let p = policy(
+            PolicyAction::Warn,
+            vec![rule(
+                "catch-all",
+                PolicyTrigger::Any,
+                PolicyAction::Allow,
+                &[],
+                &[],
+            )],
+        );
+        let (action, _) = p.evaluate("anything", &[], false);
+        assert_eq!(action, PolicyAction::Allow);
+    }
+
+    #[test]
+    fn policy_action_display() {
+        assert_eq!(PolicyAction::Allow.to_string(), "ALLOWED");
+        assert_eq!(PolicyAction::Warn.to_string(), "WARN");
+        assert_eq!(PolicyAction::Block.to_string(), "BLOCKED");
+    }
+
+    #[test]
+    fn load_from_valid_toml_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let toml = r#"
+version = "1.0"
+mode = "warn"
+
+[[rules]]
+id = "test-rule"
+trigger = "ai_detected"
+action = "block"
+"#;
+        let path = dir.path().join("policy.toml");
+        std::fs::write(&path, toml).unwrap();
+        let p = Policy::load(&path).unwrap();
+        assert_eq!(p.rules.len(), 1);
+        assert_eq!(p.rules[0].id, "test-rule");
+        assert_eq!(p.rules[0].action, PolicyAction::Block);
+    }
+}
+
 impl Default for Policy {
     fn default() -> Self {
         Self {

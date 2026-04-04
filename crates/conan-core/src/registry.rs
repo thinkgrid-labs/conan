@@ -113,3 +113,119 @@ impl Registry {
             .collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_sig(id: &str, domains: &[&str], processes: &[&str]) -> Signature {
+        Signature {
+            id: id.to_string(),
+            name: id.to_string(),
+            version: "1.0.0".to_string(),
+            risk_base: 50,
+            domains: domains.iter().map(|s| s.to_string()).collect(),
+            ip_ranges: vec![],
+            process_names: processes.iter().map(|s| s.to_string()).collect(),
+            dlp_patterns: vec![],
+            http_patterns: HttpPatterns::default(),
+            tags: vec![],
+            privacy_policy_url: None,
+        }
+    }
+
+    #[test]
+    fn insert_and_get() {
+        let mut reg = Registry::new();
+        reg.insert(make_sig("openai", &["api.openai.com"], &["openai"]));
+        assert!(reg.get("openai").is_some());
+        assert!(reg.get("anthropic").is_none());
+        assert_eq!(reg.len(), 1);
+        assert!(!reg.is_empty());
+    }
+
+    #[test]
+    fn match_domain_exact() {
+        let mut reg = Registry::new();
+        reg.insert(make_sig("openai", &["api.openai.com"], &[]));
+        let m = reg.match_domain("api.openai.com");
+        assert_eq!(m.len(), 1);
+        assert_eq!(m[0].id, "openai");
+    }
+
+    #[test]
+    fn match_domain_subdomain() {
+        let mut reg = Registry::new();
+        reg.insert(make_sig("openai", &["openai.com"], &[]));
+        // api.openai.com ends_with(".openai.com") → should match
+        assert_eq!(reg.match_domain("api.openai.com").len(), 1);
+    }
+
+    #[test]
+    fn match_domain_no_match() {
+        let mut reg = Registry::new();
+        reg.insert(make_sig("openai", &["api.openai.com"], &[]));
+        assert!(reg.match_domain("anthropic.com").is_empty());
+    }
+
+    #[test]
+    fn match_domain_does_not_match_partial_prefix() {
+        // "evil-openai.com" must NOT match "openai.com"
+        let mut reg = Registry::new();
+        reg.insert(make_sig("openai", &["openai.com"], &[]));
+        assert!(reg.match_domain("evil-openai.com").is_empty());
+    }
+
+    #[test]
+    fn match_process_exact() {
+        let mut reg = Registry::new();
+        reg.insert(make_sig("ollama", &[], &["ollama"]));
+        assert_eq!(reg.match_process("ollama").len(), 1);
+    }
+
+    #[test]
+    fn match_process_no_match() {
+        let mut reg = Registry::new();
+        reg.insert(make_sig("ollama", &[], &["ollama"]));
+        assert!(reg.match_process("nginx").is_empty());
+    }
+
+    #[test]
+    fn nonexistent_dir_returns_empty_registry() {
+        let reg = Registry::load_from_dir(std::path::Path::new("/no/such/path")).unwrap();
+        assert!(reg.is_empty());
+    }
+
+    #[test]
+    fn load_from_dir_parses_yaml_file() {
+        use std::io::Write;
+        let dir = tempfile::tempdir().unwrap();
+        let yaml = r#"
+id: test-svc
+name: Test Service
+version: "1.0.0"
+risk_base: 42
+domains:
+  - test.example.com
+process_names:
+  - test-cli
+tags: [test]
+"#;
+        let mut f = std::fs::File::create(dir.path().join("test-svc.yaml")).unwrap();
+        f.write_all(yaml.as_bytes()).unwrap();
+
+        let reg = Registry::load_from_dir(dir.path()).unwrap();
+        assert_eq!(reg.len(), 1);
+        let sig = reg.get("test-svc").unwrap();
+        assert_eq!(sig.risk_base, 42);
+        assert_eq!(sig.domains[0], "test.example.com");
+    }
+
+    #[test]
+    fn load_from_dir_ignores_non_yaml_files() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("readme.txt"), "not a signature").unwrap();
+        let reg = Registry::load_from_dir(dir.path()).unwrap();
+        assert!(reg.is_empty());
+    }
+}

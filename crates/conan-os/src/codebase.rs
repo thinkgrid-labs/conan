@@ -66,8 +66,12 @@ impl Ingestor for CodebaseIngestor {
         {
             let path = entry.path();
 
-            // Skip hidden dirs (node_modules, .git, target, etc.)
-            if path.components().any(|c| {
+            // Skip hidden dirs and known noise dirs relative to the scan root.
+            // We strip the root prefix so that absolute path components above
+            // the root (e.g. the OS temp dir which starts with ".tmp") do not
+            // accidentally cause every file to be skipped.
+            let rel = path.strip_prefix(&self.root).unwrap_or(path);
+            if rel.components().any(|c| {
                 let s = c.as_os_str().to_string_lossy();
                 s.starts_with('.') || s == "node_modules" || s == "target" || s == "dist"
             }) {

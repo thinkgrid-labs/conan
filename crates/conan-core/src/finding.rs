@@ -35,6 +35,105 @@ pub struct Finding {
     pub detail: String,
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        event::{EventPayload, Source},
+        registry::HttpPatterns,
+    };
+
+    fn make_event() -> crate::event::Event {
+        crate::event::Event::new(
+            Source::Network,
+            EventPayload::NetworkConnection {
+                remote_host: "api.openai.com".to_string(),
+                remote_ip: None,
+                port: 443,
+                protocol: "tcp".to_string(),
+                http_headers: None,
+                body_snippet: None,
+            },
+        )
+    }
+
+    fn make_sig(id: &str, risk_base: u8) -> Signature {
+        Signature {
+            id: id.to_string(),
+            name: format!("{id} Service"),
+            version: "1.0.0".to_string(),
+            risk_base,
+            domains: vec![],
+            ip_ranges: vec![],
+            process_names: vec![],
+            dlp_patterns: vec![],
+            http_patterns: HttpPatterns::default(),
+            tags: vec![],
+            privacy_policy_url: None,
+        }
+    }
+
+    #[test]
+    fn no_signature_uses_default_base_risk_30() {
+        let f = Finding::new(make_event(), None, vec![], "detail".to_string());
+        assert_eq!(f.risk_score.0, 30);
+        assert_eq!(f.risk_level, RiskLevel::Medium);
+        assert!(f.signature_id.is_none());
+        assert!(f.service_name.is_none());
+    }
+
+    #[test]
+    fn uses_signature_risk_base() {
+        let sig = make_sig("openai", 65);
+        let f = Finding::new(make_event(), Some(&sig), vec![], "detail".to_string());
+        assert_eq!(f.risk_score.0, 65);
+        assert_eq!(f.risk_level, RiskLevel::High);
+        assert_eq!(f.signature_id.as_deref(), Some("openai"));
+        assert_eq!(f.service_name.as_deref(), Some("openai Service"));
+    }
+
+    #[test]
+    fn critical_dlp_doubles_score() {
+        let sig = make_sig("openai", 40);
+        let dlp = vec![DlpMatch {
+            pattern_id: "openai_key".to_string(),
+            description: "key found".to_string(),
+            severity: DlpSeverity::Critical,
+        }];
+        let f = Finding::new(make_event(), Some(&sig), dlp, "detail".to_string());
+        // 40 * 2.0 = 80
+        assert_eq!(f.risk_score.0, 80);
+        assert_eq!(f.risk_level, RiskLevel::Critical);
+    }
+
+    #[test]
+    fn high_dlp_multiplies_score_by_1_5() {
+        let sig = make_sig("openai", 40);
+        let dlp = vec![DlpMatch {
+            pattern_id: "openai_org_id".to_string(),
+            description: "org id found".to_string(),
+            severity: DlpSeverity::High,
+        }];
+        let f = Finding::new(make_event(), Some(&sig), dlp, "detail".to_string());
+        // 40 * 1.5 = 60
+        assert_eq!(f.risk_score.0, 60);
+        assert_eq!(f.risk_level, RiskLevel::High);
+    }
+
+    #[test]
+    fn each_finding_has_unique_id() {
+        let f1 = Finding::new(make_event(), None, vec![], "a".to_string());
+        let f2 = Finding::new(make_event(), None, vec![], "b".to_string());
+        assert_ne!(f1.id, f2.id);
+    }
+
+    #[test]
+    fn detail_is_preserved() {
+        let f = Finding::new(make_event(), None, vec![], "my detail".to_string());
+        assert_eq!(f.detail, "my detail");
+    }
+}
+
 impl Finding {
     pub fn new(
         event: Event,

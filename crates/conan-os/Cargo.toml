@@ -21,3 +21,7 @@ sysinfo = "0.30"
 walkdir = "2"
 dirs = "5"
 rusqlite = { version = "0.31", features = ["bundled"] }
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio.workspace = true

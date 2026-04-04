@@ -17,3 +17,6 @@ tracing.workspace = true
 chrono.workspace = true
 uuid.workspace = true
 rusqlite = { version = "0.31", features = ["bundled", "chrono", "uuid"] }
+
+[dev-dependencies]
+tempfile.workspace = true
