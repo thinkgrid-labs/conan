@@ -13,7 +13,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["conan contributors"]
 license = "Apache-2.0"
-repository = "https://github.com/conan-ai/conan"
+repository = "https://github.com/thinkgrid-labs/conan.git"
 
 [workspace.dependencies]
 # async
@@ -68,6 +68,11 @@ tracing-subscriber.workspace = true
 chrono.workspace = true
 clap = { version = "4", features = ["derive", "env"] }
 directories = "5"
-libc = "0.2"
 async-trait.workspace = true
 regex.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Threading"] }

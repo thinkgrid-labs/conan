@@ -22,6 +22,27 @@ pub enum DaemonCommands {
     },
 }
 
+/// Send a termination signal to a process by PID, cross-platform.
+fn terminate_process(pid: u32) {
+    #[cfg(unix)]
+    unsafe {
+        libc::kill(pid as i32, libc::SIGTERM);
+    }
+
+    #[cfg(windows)]
+    unsafe {
+        use windows_sys::Win32::Foundation::CloseHandle;
+        use windows_sys::Win32::System::Threading::{
+            OpenProcess, TerminateProcess, PROCESS_TERMINATE,
+        };
+        let handle = OpenProcess(PROCESS_TERMINATE, 0, pid);
+        if !handle.is_null() {
+            TerminateProcess(handle, 1);
+            CloseHandle(handle);
+        }
+    }
+}
+
 pub async fn run(args: DaemonArgs) -> Result<()> {
     let data_dir = crate::data_dir()?;
     let pid_file = data_dir.join("daemon.pid");
@@ -46,20 +67,15 @@ pub async fn run(args: DaemonArgs) -> Result<()> {
                 return Ok(());
             }
             let pid: u32 = std::fs::read_to_string(&pid_file)?.trim().parse()?;
-            unsafe {
-                libc::kill(pid as i32, libc::SIGTERM);
-            }
+            terminate_process(pid);
             std::fs::remove_file(&pid_file)?;
-            println!("Sent SIGTERM to daemon (pid {pid}).");
+            println!("Terminated daemon (pid {pid}).");
         }
 
         DaemonCommands::Restart => {
-            // Stop then start
             if pid_file.exists() {
                 let pid: u32 = std::fs::read_to_string(&pid_file)?.trim().parse()?;
-                unsafe {
-                    libc::kill(pid as i32, libc::SIGTERM);
-                }
+                terminate_process(pid);
                 std::fs::remove_file(&pid_file)?;
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             }
