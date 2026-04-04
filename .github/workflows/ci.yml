@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
 
 env:
@@ -43,7 +43,7 @@ jobs:
 
   validate-signatures:
     name: Validate Signatures
-    runs-on: ubuntu-latest  # bash loop — Linux only
+    runs-on: ubuntu-latest # bash loop — Linux only
 
     steps:
       - uses: actions/checkout@v4.2.2

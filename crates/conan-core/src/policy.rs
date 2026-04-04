@@ -148,8 +148,20 @@ mod tests {
         let p = policy(
             PolicyAction::Warn,
             vec![
-                rule("block", PolicyTrigger::AiDetected, PolicyAction::Block, &[], &[]),
-                rule("warn", PolicyTrigger::AiDetected, PolicyAction::Warn, &[], &[]),
+                rule(
+                    "block",
+                    PolicyTrigger::AiDetected,
+                    PolicyAction::Block,
+                    &[],
+                    &[],
+                ),
+                rule(
+                    "warn",
+                    PolicyTrigger::AiDetected,
+                    PolicyAction::Warn,
+                    &[],
+                    &[],
+                ),
             ],
         );
         let (action, id) = p.evaluate("openai", &[], false);

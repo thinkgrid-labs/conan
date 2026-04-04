@@ -110,11 +110,7 @@ async fn ignores_git_directory() {
     let dir = tempfile::tempdir().unwrap();
     let git = dir.path().join(".git");
     std::fs::create_dir(&git).unwrap();
-    std::fs::write(
-        git.join("config"),
-        "sk-abcdefghijklmnopqrstu\n",
-    )
-    .unwrap();
+    std::fs::write(git.join("config"), "sk-abcdefghijklmnopqrstu\n").unwrap();
 
     assert!(
         ingestor(dir.path()).ingest().await.unwrap().is_empty(),
@@ -127,11 +123,7 @@ async fn ignores_node_modules_directory() {
     let dir = tempfile::tempdir().unwrap();
     let nm = dir.path().join("node_modules");
     std::fs::create_dir(&nm).unwrap();
-    std::fs::write(
-        nm.join("pkg.js"),
-        "const k = 'sk-abcdefghijklmnopqrstu';",
-    )
-    .unwrap();
+    std::fs::write(nm.join("pkg.js"), "const k = 'sk-abcdefghijklmnopqrstu';").unwrap();
 
     assert!(
         ingestor(dir.path()).ingest().await.unwrap().is_empty(),
