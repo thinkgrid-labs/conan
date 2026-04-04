@@ -9,7 +9,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["conan contributors"]
 license = "Apache-2.0"
@@ -58,6 +58,11 @@ homepage = "https://github.com/thinkgrid-labs/conan"
 [[bin]]
 name = "conan"
 path = "src/main.rs"
+
+[features]
+# Enable live pcap capture (requires libpcap: apt install libpcap-dev / brew install libpcap).
+# Build with: cargo build --features pcap-capture
+pcap-capture = ["conan-net/capture"]
 
 [dependencies]
 conan-core = { path = "crates/conan-core" }
