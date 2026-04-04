@@ -18,8 +18,8 @@ chrono.workspace = true
 async-trait.workspace = true
 regex.workspace = true
 # pcap is optional; feature-gated so the binary compiles without libpcap installed
-pcap = { version = "1", optional = true }
+pcap = { version = "2", optional = true }
 
 [features]
 default = []
-capture = ["pcap"]
+capture = ["dep:pcap"]

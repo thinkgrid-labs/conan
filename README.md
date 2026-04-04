@@ -1,4 +1,4 @@
-# conan — AI Governance & Detection CLI
+# Conan — AI Governance & Detection CLI
 
 **Detect, inspect, and govern AI service usage across your infrastructure.**
 
@@ -768,7 +768,7 @@ See [Contributing a signature](#contributing-a-signature) above.
 - [x] `conan scan --output sarif` — SARIF 2.1.0 output for GitHub Code Scanning
 - [x] Webhook alerting (Slack + generic HTTP) with per-service debounce
 - [x] GitHub Action (`conan-action`) — scan codebase and upload SARIF in CI
-- [ ] `conan-net`: pcap-based live network capture with HTTP header fingerprinting
+- [x] `conan-net`: pcap-based live network capture with HTTP header + TLS SNI fingerprinting (`--features pcap-capture`)
 
 ### M3 — "Guardian"
 - [ ] Risk score thresholds and per-rule score overrides in policy files

@@ -16,6 +16,9 @@ pub enum ScanSource {
     Browser,
     Shell,
     Codebase,
+    /// Live packet capture via libpcap. Requires elevated privileges and
+    /// the pcap-capture feature (cargo build --features pcap-capture).
+    Pcap,
     All,
 }
 
@@ -48,6 +51,14 @@ pub struct ScanArgs {
     /// Run continuously, re-scanning every N seconds.
     #[arg(short, long)]
     pub watch: Option<u64>,
+
+    /// Seconds to capture packets (--source pcap only). Default: 10.
+    #[arg(long, default_value = "10")]
+    pub pcap_secs: u64,
+
+    /// Network interface for pcap capture (--source pcap only). Default: system default.
+    #[arg(long)]
+    pub pcap_iface: Option<String>,
 }
 
 pub async fn run(args: ScanArgs) -> Result<()> {
@@ -165,5 +176,37 @@ async fn collect_events(
         all_events.extend(cb.ingest().await?);
     }
 
+    if let ScanSource::Pcap = args.source {
+        all_events.extend(collect_pcap(ctx, args.pcap_secs, args.pcap_iface.as_deref()).await?);
+    }
+
     Ok(all_events)
+}
+
+#[cfg(feature = "pcap-capture")]
+async fn collect_pcap(
+    ctx: &ScanContext,
+    secs: u64,
+    iface: Option<&str>,
+) -> Result<Vec<conan_core::event::Event>> {
+    use conan_core::traits::Ingestor;
+    eprintln!("Starting pcap capture for {secs}s (Ctrl-C to stop early)...");
+    let mut ing = conan_net::PcapIngestor::new(ctx.registry.clone()).with_duration(secs);
+    if let Some(i) = iface {
+        ing = ing.with_interface(i);
+    }
+    Ok(ing.ingest().await?)
+}
+
+#[cfg(not(feature = "pcap-capture"))]
+async fn collect_pcap(
+    _ctx: &ScanContext,
+    _secs: u64,
+    _iface: Option<&str>,
+) -> Result<Vec<conan_core::event::Event>> {
+    anyhow::bail!(
+        "pcap capture requires the pcap-capture feature and libpcap.\n\
+         Install libpcap: apt install libpcap-dev  OR  brew install libpcap\n\
+         Then rebuild:    cargo build --features pcap-capture"
+    )
 }
