@@ -73,7 +73,21 @@ sudo mv conan /usr/local/bin/
 # Linux (x86_64)
 curl -L https://github.com/conan-ai/conan/releases/latest/download/conan-linux-x86_64.tar.gz | tar xz
 sudo mv conan /usr/local/bin/
+
+# Linux (ARM64)
+curl -L https://github.com/conan-ai/conan/releases/latest/download/conan-linux-aarch64.tar.gz | tar xz
+sudo mv conan /usr/local/bin/
 ```
+
+**Windows** — download `conan-windows-x86_64.zip` from the Releases page, extract it, and add the folder to your `PATH`:
+
+```powershell
+# PowerShell (run as Administrator)
+Expand-Archive conan-windows-x86_64.zip -DestinationPath C:\conan
+[Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";C:\conan", "Machine")
+```
+
+Or place `conan.exe` anywhere already on your `PATH` (e.g. `C:\Windows\System32`).
 
 ### From source
 
