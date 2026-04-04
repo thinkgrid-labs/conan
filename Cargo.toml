@@ -9,7 +9,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["conan contributors"]
 license = "Apache-2.0"
@@ -41,6 +41,8 @@ tokio-stream = "0.1"
 uuid = { version = "1", features = ["v4", "serde"] }
 # test utilities
 tempfile = "3"
+# http client
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 [package]
 name = "conan"
@@ -72,6 +74,7 @@ clap = { version = "4", features = ["derive", "env"] }
 directories = "5"
 async-trait.workspace = true
 regex.workspace = true
+reqwest.workspace = true
 
 [dev-dependencies]
 assert_cmd = "2"

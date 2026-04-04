@@ -1,0 +1,92 @@
+name: 'Conan AI Governance Scan'
+description: 'Detect AI service usage in your codebase and report via GitHub Code Scanning (SARIF).'
+author: 'thinkgrid-labs'
+
+inputs:
+  version:
+    description: 'conan release tag to download (e.g. v0.2.0). Defaults to latest.'
+    required: false
+    default: 'latest'
+  path:
+    description: 'Directory to scan.'
+    required: false
+    default: '.'
+  policy:
+    description: 'Path to a policy.toml file. If omitted, the built-in default policy is used.'
+    required: false
+    default: ''
+  fail-on:
+    description: 'Exit with a non-zero status if any finding is at or above this risk level (critical|high|medium|low). Set to "none" to never fail.'
+    required: false
+    default: 'high'
+  upload-sarif:
+    description: 'Upload the SARIF file to GitHub Code Scanning. Requires the security-events write permission.'
+    required: false
+    default: 'true'
+
+outputs:
+  sarif-file:
+    description: 'Path to the generated SARIF file.'
+    value: ${{ steps.scan.outputs.sarif-file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Download conan binary
+      shell: bash
+      env:
+        GH_VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+        ARCH=$(uname -m)
+        case "$ARCH" in
+          x86_64)  ARCH="x86_64" ;;
+          aarch64|arm64) ARCH="aarch64" ;;
+          *) echo "Unsupported architecture: $ARCH" && exit 1 ;;
+        esac
+        if [ "$GH_VERSION" = "latest" ]; then
+          URL="https://github.com/thinkgrid-labs/conan/releases/latest/download/conan-${OS}-${ARCH}"
+        else
+          URL="https://github.com/thinkgrid-labs/conan/releases/download/${GH_VERSION}/conan-${OS}-${ARCH}"
+        fi
+        curl -fsSL "$URL" -o "$RUNNER_TEMP/conan"
+        chmod +x "$RUNNER_TEMP/conan"
+        echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+    - name: Update signatures
+      shell: bash
+      run: conan signatures update
+
+    - name: Scan codebase
+      id: scan
+      shell: bash
+      env:
+        CONAN_POLICY: ${{ inputs.policy }}
+        CONAN_PATH: ${{ inputs.path }}
+        CONAN_FAIL_ON: ${{ inputs.fail-on }}
+      run: |
+        set -euo pipefail
+        SARIF_FILE="$RUNNER_TEMP/conan-results.sarif"
+        POLICY_FLAG=""
+        if [ -n "$CONAN_POLICY" ]; then
+          POLICY_FLAG="--policy $CONAN_POLICY"
+        fi
+        conan scan --source codebase --path "$CONAN_PATH" --output sarif $POLICY_FLAG > "$SARIF_FILE"
+        echo "sarif-file=$SARIF_FILE" >> "$GITHUB_OUTPUT"
+
+        # Fail if any finding meets or exceeds the threshold
+        if [ "$CONAN_FAIL_ON" != "none" ]; then
+          LEVEL=$(echo "$CONAN_FAIL_ON" | tr '[:lower:]' '[:upper:]')
+          if grep -q "\"$LEVEL\"" "$SARIF_FILE" 2>/dev/null || grep -q '"error"' "$SARIF_FILE" 2>/dev/null && [ "$LEVEL" = "HIGH" -o "$LEVEL" = "CRITICAL" ]; then
+            echo "::error::conan: findings at or above $CONAN_FAIL_ON risk level detected."
+            exit 1
+          fi
+        fi
+
+    - name: Upload SARIF to GitHub Code Scanning
+      if: ${{ inputs.upload-sarif == 'true' }}
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.scan.outputs.sarif-file }}
+        category: conan-ai-governance

@@ -676,7 +676,7 @@ See [Contributing a signature](#contributing-a-signature) above.
 
 ## Roadmap
 
-### M1 — "Watcher" ✓ current
+### M1 — "Watcher" ✓
 - [x] Workspace scaffold, CI, cross-platform release pipeline
 - [x] `conan-core` traits and types
 - [x] Process, shell history, browser history, codebase ingestors
@@ -687,13 +687,14 @@ See [Contributing a signature](#contributing-a-signature) above.
 - [x] Background daemon with Unix socket IPC (`conan daemon start/stop`)
 - [x] OS service integration — macOS launchd + Linux systemd (`conan service install`)
 
-### M2 — "Deep Diver"
+### M2 — "Deep Diver" ✓
+- [x] `conan signatures update` — pull latest signatures from GitHub
+- [x] `conan report --live` — stream new findings from the DB in real time
+- [x] `conan report --format html` — self-contained HTML report with risk dashboard
+- [x] `conan scan --output sarif` — SARIF 2.1.0 output for GitHub Code Scanning
+- [x] Webhook alerting (Slack + generic HTTP) with per-service debounce
+- [x] GitHub Action (`conan-action`) — scan codebase and upload SARIF in CI
 - [ ] `conan-net`: pcap-based live network capture with HTTP header fingerprinting
-- [ ] `conan signatures update` — pull latest signatures from GitHub releases
-- [ ] `conan report --live` — stream findings from the running daemon
-- [ ] Webhook alerting (Slack + generic HTTP) with per-rule debounce
-- [ ] HTML report with risk summary dashboard
-- [ ] GitHub Action (`conan-action`) with SARIF output for the GitHub Security tab
 
 ### M3 — "Guardian"
 - [ ] Risk score thresholds and per-rule score overrides in policy files

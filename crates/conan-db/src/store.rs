@@ -91,6 +91,39 @@ impl Store {
             .collect()
     }
 
+    /// Query findings inserted after the given RFC3339 timestamp, ascending order.
+    pub fn query_findings_since(
+        &self,
+        since_timestamp: &str,
+    ) -> Result<Vec<serde_json::Value>, ConanError> {
+        let mut stmt = self
+            .conn
+            .prepare(
+                "SELECT id, timestamp, source, service_name, risk_score, risk_level, detail
+                 FROM findings
+                 WHERE timestamp > ?1
+                 ORDER BY timestamp ASC",
+            )
+            .map_err(|e| ConanError::Database(e.to_string()))?;
+
+        let rows = stmt
+            .query_map([since_timestamp], |row| {
+                Ok(serde_json::json!({
+                    "id":           row.get::<_, String>(0)?,
+                    "timestamp":    row.get::<_, String>(1)?,
+                    "source":       row.get::<_, String>(2)?,
+                    "service_name": row.get::<_, Option<String>>(3)?,
+                    "risk_score":   row.get::<_, u8>(4)?,
+                    "risk_level":   row.get::<_, String>(5)?,
+                    "detail":       row.get::<_, String>(6)?,
+                }))
+            })
+            .map_err(|e| ConanError::Database(e.to_string()))?;
+
+        rows.map(|r| r.map_err(|e| ConanError::Database(e.to_string())))
+            .collect()
+    }
+
     pub fn finding_count_today(&self) -> Result<u32, ConanError> {
         self.conn
             .query_row(

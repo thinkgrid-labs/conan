@@ -43,4 +43,7 @@ pub enum Commands {
     Status,
     /// Check that conan's environment is healthy.
     Doctor,
+    /// Internal: run the daemon event loop in this process (do not call directly).
+    #[command(name = "_run-daemon", hide = true)]
+    RunDaemon,
 }
