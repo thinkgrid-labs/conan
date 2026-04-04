@@ -50,7 +50,13 @@ fn match_event(
         }
         EventPayload::ShellHistory { command, .. } => {
             // Match the first token (binary name) against registry process names
-            let bin = command.split_whitespace().next().unwrap_or("").rsplit('/').next().unwrap_or("");
+            let bin = command
+                .split_whitespace()
+                .next()
+                .unwrap_or("")
+                .rsplit('/')
+                .next()
+                .unwrap_or("");
             let sigs = ctx.registry.match_process(bin);
             let sig = sigs.into_iter().next().cloned();
             (sig, Some(command.clone()))
@@ -98,7 +104,9 @@ fn match_event(
 fn build_detail(event: &Event, service: Option<&str>) -> String {
     let svc = service.unwrap_or("unknown service");
     match &event.payload {
-        EventPayload::NetworkConnection { remote_host, port, .. } => {
+        EventPayload::NetworkConnection {
+            remote_host, port, ..
+        } => {
             format!("{svc} — connection to {remote_host}:{port}")
         }
         EventPayload::Process { name, pid, .. } => {
@@ -110,7 +118,11 @@ fn build_detail(event: &Event, service: Option<&str>) -> String {
         EventPayload::BrowserHistory { url, browser, .. } => {
             format!("{svc} — visited via {browser}: {url}")
         }
-        EventPayload::CodebaseFile { file_path, line_number, matched_text } => {
+        EventPayload::CodebaseFile {
+            file_path,
+            line_number,
+            matched_text,
+        } => {
             let line = line_number.map(|l| format!(":{l}")).unwrap_or_default();
             format!("DLP match '{matched_text}' in {file_path}{line}")
         }

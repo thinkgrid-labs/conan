@@ -1,6 +1,10 @@
 use anyhow::Result;
 use clap::{Args, ValueEnum};
-use conan_core::{policy::Policy, registry::Registry, traits::{Analyzer, ScanContext}};
+use conan_core::{
+    policy::Policy,
+    registry::Registry,
+    traits::{Analyzer, ScanContext},
+};
 use std::path::PathBuf;
 
 use crate::{analyzer::CoreAnalyzer, reporter};

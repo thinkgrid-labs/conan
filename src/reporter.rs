@@ -12,12 +12,16 @@ pub fn pretty(findings: &[Finding]) -> String {
         let dlp = if f.dlp_matches.is_empty() {
             String::new()
         } else {
-            format!(" [DLP: {}]", f.dlp_matches.iter().map(|d| d.pattern_id.as_str()).collect::<Vec<_>>().join(", "))
+            format!(
+                " [DLP: {}]",
+                f.dlp_matches
+                    .iter()
+                    .map(|d| d.pattern_id.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
         };
-        out.push_str(&format!(
-            "[{level:<8}]  {service:<20}  {}{dlp}\n",
-            f.detail
-        ));
+        out.push_str(&format!("[{level:<8}]  {service:<20}  {}{dlp}\n", f.detail));
     }
     out
 }

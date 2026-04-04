@@ -30,7 +30,9 @@ pub async fn run(args: DaemonArgs) -> Result<()> {
         DaemonCommands::Start => {
             if pid_file.exists() {
                 let pid = std::fs::read_to_string(&pid_file)?;
-                eprintln!("Daemon already running (pid {pid}). Use `conan daemon restart` to restart.");
+                eprintln!(
+                    "Daemon already running (pid {pid}). Use `conan daemon restart` to restart."
+                );
                 return Ok(());
             }
             println!("Starting conan daemon...");
@@ -55,7 +57,9 @@ pub async fn run(args: DaemonArgs) -> Result<()> {
             // Stop then start
             if pid_file.exists() {
                 let pid: u32 = std::fs::read_to_string(&pid_file)?.trim().parse()?;
-                unsafe { libc::kill(pid as i32, libc::SIGTERM); }
+                unsafe {
+                    libc::kill(pid as i32, libc::SIGTERM);
+                }
                 std::fs::remove_file(&pid_file)?;
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             }

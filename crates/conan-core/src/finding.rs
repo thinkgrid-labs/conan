@@ -36,9 +36,16 @@ pub struct Finding {
 }
 
 impl Finding {
-    pub fn new(event: Event, signature: Option<&Signature>, dlp_matches: Vec<DlpMatch>, detail: String) -> Self {
+    pub fn new(
+        event: Event,
+        signature: Option<&Signature>,
+        dlp_matches: Vec<DlpMatch>,
+        detail: String,
+    ) -> Self {
         let base = signature.map(|s| s.risk_base).unwrap_or(30);
-        let has_critical = dlp_matches.iter().any(|d| d.severity == DlpSeverity::Critical);
+        let has_critical = dlp_matches
+            .iter()
+            .any(|d| d.severity == DlpSeverity::Critical);
         let has_high = dlp_matches.iter().any(|d| d.severity == DlpSeverity::High);
         let risk_score = RiskScore::calculate(base, has_critical, has_high, false);
         let risk_level = risk_score.level();

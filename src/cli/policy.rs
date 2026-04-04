@@ -22,7 +22,11 @@ pub async fn run(args: PolicyArgs) -> Result<()> {
             let content = std::fs::read_to_string(&file)?;
             match toml::from_str::<conan_core::policy::Policy>(&content) {
                 Ok(policy) => {
-                    println!("✓ Valid policy: {} rules, default mode: {:?}", policy.rules.len(), policy.mode);
+                    println!(
+                        "✓ Valid policy: {} rules, default mode: {:?}",
+                        policy.rules.len(),
+                        policy.mode
+                    );
                     for rule in &policy.rules {
                         println!("  - [{}] {:?} → {:?}", rule.id, rule.trigger, rule.action);
                     }

@@ -97,7 +97,11 @@ impl Registry {
     pub fn match_domain(&self, host: &str) -> Vec<&Signature> {
         self.signatures
             .values()
-            .filter(|s| s.domains.iter().any(|d| host == d || host.ends_with(&format!(".{d}"))))
+            .filter(|s| {
+                s.domains
+                    .iter()
+                    .any(|d| host == d || host.ends_with(&format!(".{d}")))
+            })
             .collect()
     }
 

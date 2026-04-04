@@ -19,13 +19,19 @@ impl ShellHistoryIngestor {
         let history_files = vec![
             (home.join(".bash_history"), "bash".to_string()),
             (home.join(".zsh_history"), "zsh".to_string()),
-            (home.join(".local/share/fish/fish_history"), "fish".to_string()),
+            (
+                home.join(".local/share/fish/fish_history"),
+                "fish".to_string(),
+            ),
         ]
         .into_iter()
         .filter(|(p, _)| p.exists())
         .collect();
 
-        Self { registry, history_files }
+        Self {
+            registry,
+            history_files,
+        }
     }
 }
 
@@ -65,11 +71,15 @@ impl Ingestor for ShellHistoryIngestor {
                 }
 
                 let matched = known_names.iter().any(|name| {
-                    command.split_whitespace().next().map(|cmd| {
-                        // Match on the base binary name
-                        let bin = cmd.rsplit('/').next().unwrap_or(cmd);
-                        bin == name || bin.starts_with(name)
-                    }).unwrap_or(false)
+                    command
+                        .split_whitespace()
+                        .next()
+                        .map(|cmd| {
+                            // Match on the base binary name
+                            let bin = cmd.rsplit('/').next().unwrap_or(cmd);
+                            bin == name || bin.starts_with(name)
+                        })
+                        .unwrap_or(false)
                 });
 
                 if matched {

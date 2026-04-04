@@ -15,7 +15,12 @@ impl RiskScore {
     }
 
     /// Combine base score with DLP and policy multipliers.
-    pub fn calculate(base: u8, has_dlp_critical: bool, has_dlp_high: bool, is_unapproved: bool) -> Self {
+    pub fn calculate(
+        base: u8,
+        has_dlp_critical: bool,
+        has_dlp_high: bool,
+        is_unapproved: bool,
+    ) -> Self {
         let mut score = base as f32;
         if is_unapproved {
             score *= 1.5;

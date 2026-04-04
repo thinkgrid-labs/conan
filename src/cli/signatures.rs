@@ -34,7 +34,10 @@ pub async fn run(args: SignatureArgs) -> Result<()> {
             let mut sigs: Vec<_> = registry.all().collect();
             sigs.sort_by(|a, b| a.id.cmp(&b.id));
             for sig in sigs {
-                println!("{:<20} {:<10} {:<6}  {}", sig.id, sig.version, sig.risk_base, sig.name);
+                println!(
+                    "{:<20} {:<10} {:<6}  {}",
+                    sig.id, sig.version, sig.risk_base, sig.name
+                );
             }
         }
 
@@ -52,7 +55,10 @@ pub async fn run(args: SignatureArgs) -> Result<()> {
         SignatureCommands::Update => {
             println!("Fetching latest signatures from upstream...");
             // TODO: implement HTTP fetch from GitHub releases in M2
-            println!("Signature update not yet implemented. Copy YAML files to: {}", sig_dir.display());
+            println!(
+                "Signature update not yet implemented. Copy YAML files to: {}",
+                sig_dir.display()
+            );
         }
     }
 

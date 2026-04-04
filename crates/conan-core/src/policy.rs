@@ -77,7 +77,12 @@ impl Policy {
 
     /// Evaluate the policy for a detected signature id and tags.
     /// Returns the matching action and which rule matched (if any).
-    pub fn evaluate(&self, signature_id: &str, tags: &[String], has_dlp: bool) -> (PolicyAction, Option<String>) {
+    pub fn evaluate(
+        &self,
+        signature_id: &str,
+        tags: &[String],
+        has_dlp: bool,
+    ) -> (PolicyAction, Option<String>) {
         for rule in &self.rules {
             let trigger_matches = match rule.trigger {
                 PolicyTrigger::AiDetected => true,

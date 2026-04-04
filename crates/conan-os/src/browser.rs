@@ -28,7 +28,8 @@ fn browser_profiles() -> Vec<BrowserProfile> {
         },
         BrowserProfile {
             name: "Brave".to_string(),
-            history_path: home.join("Library/Application Support/BraveSoftware/Brave-Browser/Default/History"),
+            history_path: home
+                .join("Library/Application Support/BraveSoftware/Brave-Browser/Default/History"),
         },
     ];
 
@@ -47,7 +48,10 @@ fn browser_profiles() -> Vec<BrowserProfile> {
     #[cfg(not(any(target_os = "macos", target_os = "linux")))]
     let profiles: Vec<BrowserProfile> = vec![];
 
-    profiles.into_iter().filter(|p| p.history_path.exists()).collect()
+    profiles
+        .into_iter()
+        .filter(|p| p.history_path.exists())
+        .collect()
 }
 
 pub struct BrowserHistoryIngestor {

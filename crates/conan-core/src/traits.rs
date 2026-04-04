@@ -1,11 +1,7 @@
 use async_trait::async_trait;
 
 use crate::{
-    error::ConanError,
-    event::Event,
-    finding::Finding,
-    policy::Policy,
-    registry::Registry,
+    error::ConanError, event::Event, finding::Finding, policy::Policy, registry::Registry,
 };
 
 /// Context passed to every ingestor during a scan.

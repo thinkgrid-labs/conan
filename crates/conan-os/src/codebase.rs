@@ -16,13 +16,16 @@ static DLP_PATTERNS: &[(&str, &str)] = &[
     ("anthropic_key", r"sk-ant-[A-Za-z0-9\-_]{20,}"),
     ("google_ai_key", r"AIza[0-9A-Za-z\-_]{35}"),
     ("huggingface_key", r"hf_[A-Za-z0-9]{20,}"),
-    ("generic_api_key", r#"(?i)(api[_\-]?key|secret)["\s]*[:=]["\s]*[A-Za-z0-9\-_]{16,}"#),
+    (
+        "generic_api_key",
+        r#"(?i)(api[_\-]?key|secret)["\s]*[:=]["\s]*[A-Za-z0-9\-_]{16,}"#,
+    ),
 ];
 
 /// Extensions to scan.
 static SCAN_EXTENSIONS: &[&str] = &[
-    "js", "ts", "jsx", "tsx", "py", "rb", "go", "rs", "java", "kt",
-    "php", "cs", "env", "toml", "yaml", "yml", "json",
+    "js", "ts", "jsx", "tsx", "py", "rb", "go", "rs", "java", "kt", "php", "cs", "env", "toml",
+    "yaml", "yml", "json",
 ];
 
 pub struct CodebaseIngestor {
@@ -38,7 +41,11 @@ impl CodebaseIngestor {
             .filter_map(|(id, pat)| Regex::new(pat).ok().map(|r| (id.to_string(), r)))
             .collect();
 
-        Self { registry, root, compiled_patterns }
+        Self {
+            registry,
+            root,
+            compiled_patterns,
+        }
     }
 }
 
