@@ -13,45 +13,75 @@ struct BrowserProfile {
     history_path: PathBuf,
 }
 
+#[allow(unreachable_code)]
 fn browser_profiles() -> Vec<BrowserProfile> {
-    let home = dirs::home_dir().unwrap_or_default();
-
     #[cfg(target_os = "macos")]
-    let profiles = vec![
-        BrowserProfile {
-            name: "Chrome".to_string(),
-            history_path: home.join("Library/Application Support/Google/Chrome/Default/History"),
-        },
-        BrowserProfile {
-            name: "Firefox".to_string(),
-            history_path: home.join("Library/Application Support/Firefox/Profiles"),
-        },
-        BrowserProfile {
-            name: "Brave".to_string(),
-            history_path: home
-                .join("Library/Application Support/BraveSoftware/Brave-Browser/Default/History"),
-        },
-    ];
-
-    #[cfg(target_os = "linux")]
-    let profiles = vec![
-        BrowserProfile {
-            name: "Chrome".to_string(),
-            history_path: home.join(".config/google-chrome/Default/History"),
-        },
-        BrowserProfile {
-            name: "Firefox".to_string(),
-            history_path: home.join(".mozilla/firefox"),
-        },
-    ];
-
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-    let profiles: Vec<BrowserProfile> = vec![];
-
-    profiles
+    {
+        let home = dirs::home_dir().unwrap_or_default();
+        return vec![
+            BrowserProfile {
+                name: "Chrome".to_string(),
+                history_path: home
+                    .join("Library/Application Support/Google/Chrome/Default/History"),
+            },
+            BrowserProfile {
+                name: "Firefox".to_string(),
+                history_path: home.join("Library/Application Support/Firefox/Profiles"),
+            },
+            BrowserProfile {
+                name: "Brave".to_string(),
+                history_path: home.join(
+                    "Library/Application Support/BraveSoftware/Brave-Browser/Default/History",
+                ),
+            },
+        ]
         .into_iter()
         .filter(|p| p.history_path.exists())
-        .collect()
+        .collect();
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let home = dirs::home_dir().unwrap_or_default();
+        return vec![
+            BrowserProfile {
+                name: "Chrome".to_string(),
+                history_path: home.join(".config/google-chrome/Default/History"),
+            },
+            BrowserProfile {
+                name: "Firefox".to_string(),
+                history_path: home.join(".mozilla/firefox"),
+            },
+        ]
+        .into_iter()
+        .filter(|p| p.history_path.exists())
+        .collect();
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let home = dirs::home_dir().unwrap_or_default();
+        return vec![
+            BrowserProfile {
+                name: "Chrome".to_string(),
+                history_path: home.join(r"AppData\Local\Google\Chrome\User Data\Default\History"),
+            },
+            BrowserProfile {
+                name: "Edge".to_string(),
+                history_path: home.join(r"AppData\Local\Microsoft\Edge\User Data\Default\History"),
+            },
+            BrowserProfile {
+                name: "Brave".to_string(),
+                history_path: home
+                    .join(r"AppData\Local\BraveSoftware\Brave-Browser\User Data\Default\History"),
+            },
+        ]
+        .into_iter()
+        .filter(|p| p.history_path.exists())
+        .collect();
+    }
+
+    vec![]
 }
 
 pub struct BrowserHistoryIngestor {
