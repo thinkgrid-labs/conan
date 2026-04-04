@@ -34,10 +34,7 @@ impl WebhookClient {
                     .signature_id
                     .clone()
                     .unwrap_or_else(|| "unknown".to_string());
-                match self.last_fired.get(&key) {
-                    Some(t) if now.duration_since(*t) < self.debounce => false,
-                    _ => true,
-                }
+                !matches!(self.last_fired.get(&key), Some(t) if now.duration_since(*t) < self.debounce)
             })
             .collect();
 
