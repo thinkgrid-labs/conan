@@ -4,7 +4,7 @@
 
 Conan is an open-source, modular AI usage scanner built in Rust. It discovers when AI services are being used on your systems — through network traffic, running processes, shell history, browser history, or source code — and lets you enforce governance policies with a simple TOML config.
 
-[![CI](https://github.com/conan-ai/conan/actions/workflows/ci.yml/badge.svg)](https://github.com/conan-ai/conan/actions/workflows/ci.yml)
+[![CI](https://github.com/thinkgrid-labs/conan/actions/workflows/ci.yml/badge.svg)](https://github.com/thinkgrid-labs/conan/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 ---
@@ -59,23 +59,23 @@ cargo install conan
 
 ### Pre-built binaries
 
-Download the latest release for your platform from the [Releases page](https://github.com/conan-ai/conan/releases):
+Download the latest release for your platform from the [Releases page](https://github.com/thinkgrid-labs/conan/releases):
 
 ```bash
 # macOS (Apple Silicon)
-curl -L https://github.com/conan-ai/conan/releases/latest/download/conan-macos-aarch64.tar.gz | tar xz
+curl -L https://github.com/thinkgrid-labs/conan/releases/latest/download/conan-macos-aarch64.tar.gz | tar xz
 sudo mv conan /usr/local/bin/
 
 # macOS (Intel)
-curl -L https://github.com/conan-ai/conan/releases/latest/download/conan-macos-x86_64.tar.gz | tar xz
+curl -L https://github.com/thinkgrid-labs/conan/releases/latest/download/conan-macos-x86_64.tar.gz | tar xz
 sudo mv conan /usr/local/bin/
 
 # Linux (x86_64)
-curl -L https://github.com/conan-ai/conan/releases/latest/download/conan-linux-x86_64.tar.gz | tar xz
+curl -L https://github.com/thinkgrid-labs/conan/releases/latest/download/conan-linux-x86_64.tar.gz | tar xz
 sudo mv conan /usr/local/bin/
 
 # Linux (ARM64)
-curl -L https://github.com/conan-ai/conan/releases/latest/download/conan-linux-aarch64.tar.gz | tar xz
+curl -L https://github.com/thinkgrid-labs/conan/releases/latest/download/conan-linux-aarch64.tar.gz | tar xz
 sudo mv conan /usr/local/bin/
 ```
 
@@ -92,7 +92,7 @@ Or place `conan.exe` anywhere already on your `PATH` (e.g. `C:\Windows\System32`
 ### From source
 
 ```bash
-git clone https://github.com/conan-ai/conan.git
+git clone https://github.com/thinkgrid-labs/conan.git
 cd conan
 cargo build --release
 # binary is at ./target/release/conan
@@ -653,7 +653,7 @@ Contributions are welcome — code, signatures, or policy templates.
 ### Development setup
 
 ```bash
-git clone https://github.com/conan-ai/conan.git
+git clone https://github.com/thinkgrid-labs/conan.git
 cd conan
 cargo build
 cargo test --all
