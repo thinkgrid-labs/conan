@@ -1,8 +1,10 @@
-# conan
+# conan — AI Governance & Detection CLI
 
 **Detect, inspect, and govern AI service usage across your infrastructure.**
 
-Conan is an open-source, modular AI usage scanner built in Rust. It discovers when AI services are being used on your systems — through network traffic, running processes, shell history, browser history, or source code — and lets you enforce governance policies with a simple TOML config.
+Conan is an open-source security tool written in Rust that discovers AI service usage on your systems — network traffic, running processes, shell history, browser history, and source code — and enforces governance policies via a simple TOML config. Think of it as `grep` for AI sprawl: API key leaks, shadow AI usage, unapproved model connections, and DLP violations, all in one binary.
+
+> **Keywords:** AI governance · shadow AI detection · API key scanner · DLP · security compliance · OpenAI · Anthropic · Rust security tool
 
 [![CI](https://github.com/thinkgrid-labs/conan/actions/workflows/ci.yml/badge.svg)](https://github.com/thinkgrid-labs/conan/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)

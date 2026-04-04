@@ -51,6 +51,9 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 description = "Detect, inspect, and govern AI service usage across your infrastructure."
+keywords = ["security", "ai-governance", "dlp", "api-key-detection", "compliance"]
+categories = ["command-line-utilities", "development-tools", "network-programming"]
+homepage = "https://github.com/thinkgrid-labs/conan"
 
 [[bin]]
 name = "conan"
