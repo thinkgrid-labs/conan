@@ -42,7 +42,7 @@ pub struct Signature {
 }
 
 /// In-memory registry of all loaded signatures.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Registry {
     signatures: HashMap<String, Signature>,
 }

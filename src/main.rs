@@ -1,6 +1,9 @@
 mod analyzer;
 mod cli;
+mod config;
 mod reporter;
+mod sarif;
+mod webhook;
 
 use anyhow::Result;
 use clap::Parser;
@@ -33,5 +36,6 @@ async fn main() -> Result<()> {
         cli::Commands::Service(args) => cli::service::run(args).await,
         cli::Commands::Status => cli::status::run().await,
         cli::Commands::Doctor => cli::doctor::run().await,
+        cli::Commands::RunDaemon => cli::daemon_cmd::run_inner().await,
     }
 }

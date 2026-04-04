@@ -2,6 +2,24 @@ use anyhow::Result;
 use clap::{Args, Subcommand};
 use std::path::PathBuf;
 
+/// Known bundled signature filenames (kept in sync with the `signatures/` directory).
+const SIGNATURE_FILES: &[&str] = &[
+    "anthropic.yaml",
+    "azure-openai.yaml",
+    "cohere.yaml",
+    "google-ai.yaml",
+    "groq.yaml",
+    "huggingface.yaml",
+    "localai.yaml",
+    "mistral.yaml",
+    "ollama.yaml",
+    "openai.yaml",
+    "perplexity.yaml",
+];
+
+const UPSTREAM_BASE: &str =
+    "https://raw.githubusercontent.com/thinkgrid-labs/conan/main/signatures";
+
 #[derive(Args, Debug)]
 pub struct SignatureArgs {
     #[command(subcommand)]
@@ -14,8 +32,12 @@ pub enum SignatureCommands {
     List,
     /// Validate a signature YAML file.
     Validate { file: PathBuf },
-    /// Fetch the latest signatures from the upstream registry.
-    Update,
+    /// Fetch the latest signatures from upstream.
+    Update {
+        /// Override the upstream base URL.
+        #[arg(long)]
+        upstream: Option<String>,
+    },
 }
 
 pub async fn run(args: SignatureArgs) -> Result<()> {
@@ -52,13 +74,61 @@ pub async fn run(args: SignatureArgs) -> Result<()> {
             }
         }
 
-        SignatureCommands::Update => {
-            println!("Fetching latest signatures from upstream...");
-            // TODO: implement HTTP fetch from GitHub releases in M2
+        SignatureCommands::Update { upstream } => {
+            let base = upstream.as_deref().unwrap_or(UPSTREAM_BASE);
             println!(
-                "Signature update not yet implemented. Copy YAML files to: {}",
-                sig_dir.display()
+                "Fetching {} signatures from {base} ...",
+                SIGNATURE_FILES.len()
             );
+            std::fs::create_dir_all(&sig_dir)?;
+
+            let client = reqwest::Client::builder()
+                .user_agent(concat!("conan/", env!("CARGO_PKG_VERSION")))
+                .timeout(std::time::Duration::from_secs(30))
+                .build()?;
+
+            let mut ok = 0usize;
+            let mut fail = 0usize;
+
+            for filename in SIGNATURE_FILES {
+                let url = format!("{base}/{filename}");
+                match client.get(&url).send().await {
+                    Ok(resp) if resp.status().is_success() => {
+                        match resp.text().await {
+                            Ok(body) => {
+                                // Validate before writing
+                                if let Err(e) =
+                                    serde_yaml::from_str::<conan_core::registry::Signature>(&body)
+                                {
+                                    eprintln!("  ✗ {filename}: invalid YAML ({e})");
+                                    fail += 1;
+                                } else {
+                                    std::fs::write(sig_dir.join(filename), &body)?;
+                                    println!("  ✓ {filename}");
+                                    ok += 1;
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("  ✗ {filename}: read error ({e})");
+                                fail += 1;
+                            }
+                        }
+                    }
+                    Ok(resp) => {
+                        eprintln!("  ✗ {filename}: HTTP {}", resp.status());
+                        fail += 1;
+                    }
+                    Err(e) => {
+                        eprintln!("  ✗ {filename}: {e}");
+                        fail += 1;
+                    }
+                }
+            }
+
+            println!("\nDone: {ok} updated, {fail} failed.");
+            if fail > 0 {
+                anyhow::bail!("{fail} signature(s) failed to update");
+            }
         }
     }
 

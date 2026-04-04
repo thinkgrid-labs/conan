@@ -12,6 +12,7 @@ Conan is an open-source, modular AI usage scanner built in Rust. It discovers wh
 ## Table of Contents
 
 - [Why conan?](#why-conan)
+- [Use Cases](#use-cases)
 - [Install](#install)
 - [Quick Start](#quick-start)
 - [How It Works](#how-it-works)
@@ -38,14 +39,85 @@ Conan is an open-source, modular AI usage scanner built in Rust. It discovers wh
 
 ## Why conan?
 
-AI services are being adopted faster than security teams can track. Developers connect to OpenAI, Anthropic, and Hugging Face APIs; employees use ChatGPT from their work laptops; codebases accumulate hardcoded API keys. Conan gives you visibility and control — without requiring network proxies, agents, or cloud infrastructure.
+AI services are being adopted faster than security teams can track. Developers connect to OpenAI, Anthropic, and Hugging Face APIs; employees use ChatGPT from their work laptops; codebases accumulate hardcoded API keys. Most organisations have no idea which AI services are actually running inside their infrastructure — until a compliance audit, a data breach, or a leaked key forces the question.
+
+Conan gives you visibility and control without requiring network proxies, cloud agents, or vendor lock-in.
 
 **Key properties:**
 
-- **Local-first** — all data stays on your machine or in your private SQLite database.
-- **Zero dependencies to run** — single static binary, no daemons required for one-shot scans.
-- **Community-driven signatures** — AI service fingerprints are plain YAML files anyone can contribute.
-- **Policy as code** — define allow/warn/block rules in a TOML file checked into version control.
+- **Local-first** — all scan data stays on your machine or in your private SQLite database. Nothing is phoned home.
+- **Single binary, no runtime deps** — drop it on any Linux, macOS, or Windows machine and run. No Docker, no JVM, no Python.
+- **Multi-surface detection** — one tool scans network traffic, running processes, shell history, browser history, and source code simultaneously.
+- **Community-driven signatures** — AI service fingerprints are plain YAML files. Adding support for a new service takes five minutes and no Rust knowledge.
+- **Policy as code** — define allow/warn/block rules in a TOML file that lives in version control alongside your application code.
+- **CI/CD native** — outputs SARIF so findings appear directly in the GitHub Security tab, with a ready-made GitHub Action.
+
+---
+
+## Use Cases
+
+### Security & Compliance teams
+
+**Shadow AI discovery** — Employees install and use AI tools that have never been approved. Conan's process and network scanners detect connections to OpenAI, Anthropic, Mistral, and 8 other services, giving your security team a full picture without deploying a network proxy.
+
+**API key leak detection** — Run `conan scan --source codebase` in CI to catch hardcoded API keys before they reach production. Supports OpenAI, Anthropic, HuggingFace, Google AI, and a generic high-entropy key pattern. Results are reported as SARIF findings in the GitHub Security tab.
+
+**Audit evidence** — `conan report --format html` produces a timestamped, self-contained report you can attach to a compliance audit or incident ticket.
+
+```bash
+# Weekly audit report for the security team
+conan scan && conan report --format html > audit-$(date +%Y-%m-%d).html
+```
+
+---
+
+### Platform & DevOps teams
+
+**Continuous governance** — Run the daemon on developer workstations or build servers. It scans every 5 minutes (configurable), persists findings to SQLite, and fires a Slack webhook when a high-risk event is detected — no additional infrastructure required.
+
+```bash
+conan daemon start          # background process, survives shell exit
+conan report --live         # watch findings stream in real time
+```
+
+**Policy enforcement in CI** — Block merges if a PR introduces a connection to an unapproved AI service or a DLP-sensitive pattern:
+
+```yaml
+# .github/workflows/conan.yml
+- uses: thinkgrid-labs/conan-action@v0.2
+  with:
+    fail-on: high
+```
+
+---
+
+### Development teams
+
+**Pre-commit key scanning** — Catch leaked secrets before `git push`. Conan's codebase ingestor scans `.js`, `.ts`, `.py`, `.go`, `.rs`, and 12 other extensions and reports the exact file and line number.
+
+```bash
+# Add to .git/hooks/pre-commit
+conan scan --source codebase --path . --output pretty
+```
+
+**Understand your AI surface area** — New to a codebase? Run `conan scan --source all` to immediately see which AI services the project talks to, what keys are present, and what processes are running — all in one command.
+
+```bash
+conan scan --source all --output json | jq '.[] | {service, risk_level, detail}'
+```
+
+---
+
+### Individual developers
+
+**Spot AI usage you forgot about** — That API key you pasted into a config file six months ago, the browser tab running a local Ollama model, the shell history full of `openai` CLI invocations — conan surfaces all of it.
+
+```bash
+conan scan         # one-shot scan, pretty output
+conan doctor       # check what conan can see on this machine
+```
+
+**Local-first, no account needed** — Unlike SaaS security tools, conan stores everything in `~/.conan/findings.db`. No sign-up, no telemetry, no data leaving your machine.
 
 ---
 
@@ -676,7 +748,7 @@ See [Contributing a signature](#contributing-a-signature) above.
 
 ## Roadmap
 
-### M1 — "Watcher" ✓ current
+### M1 — "Watcher" ✓
 - [x] Workspace scaffold, CI, cross-platform release pipeline
 - [x] `conan-core` traits and types
 - [x] Process, shell history, browser history, codebase ingestors
@@ -687,13 +759,14 @@ See [Contributing a signature](#contributing-a-signature) above.
 - [x] Background daemon with Unix socket IPC (`conan daemon start/stop`)
 - [x] OS service integration — macOS launchd + Linux systemd (`conan service install`)
 
-### M2 — "Deep Diver"
+### M2 — "Deep Diver" ✓
+- [x] `conan signatures update` — pull latest signatures from GitHub
+- [x] `conan report --live` — stream new findings from the DB in real time
+- [x] `conan report --format html` — self-contained HTML report with risk dashboard
+- [x] `conan scan --output sarif` — SARIF 2.1.0 output for GitHub Code Scanning
+- [x] Webhook alerting (Slack + generic HTTP) with per-service debounce
+- [x] GitHub Action (`conan-action`) — scan codebase and upload SARIF in CI
 - [ ] `conan-net`: pcap-based live network capture with HTTP header fingerprinting
-- [ ] `conan signatures update` — pull latest signatures from GitHub releases
-- [ ] `conan report --live` — stream findings from the running daemon
-- [ ] Webhook alerting (Slack + generic HTTP) with per-rule debounce
-- [ ] HTML report with risk summary dashboard
-- [ ] GitHub Action (`conan-action`) with SARIF output for the GitHub Security tab
 
 ### M3 — "Guardian"
 - [ ] Risk score thresholds and per-rule score overrides in policy files

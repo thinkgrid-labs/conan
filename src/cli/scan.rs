@@ -24,6 +24,7 @@ pub enum OutputFormat {
     Pretty,
     Json,
     Markdown,
+    Sarif,
 }
 
 #[derive(Args, Debug)]
@@ -74,6 +75,11 @@ pub async fn run(args: ScanArgs) -> Result<()> {
 
     let ctx = ScanContext { registry, policy };
     let store = conan_db::Store::open(&data_dir.join("findings.db"))?;
+    let cfg = crate::config::ConanConfig::load(&data_dir)?;
+    let mut webhook = cfg
+        .webhook
+        .as_ref()
+        .map(crate::webhook::WebhookClient::from_config);
 
     loop {
         let events = collect_events(&args, &ctx).await?;
@@ -85,11 +91,25 @@ pub async fn run(args: ScanArgs) -> Result<()> {
             store.insert_finding(f)?;
         }
 
+        // Webhook: fire for high/critical findings
+        if let Some(ref mut wh) = webhook {
+            use conan_core::finding::RiskLevel;
+            let actionable: Vec<_> = findings
+                .iter()
+                .filter(|f| matches!(f.risk_level, RiskLevel::High | RiskLevel::Critical))
+                .cloned()
+                .collect();
+            if !actionable.is_empty() {
+                wh.fire(&actionable).await;
+            }
+        }
+
         // Output
         let output = match args.output {
             OutputFormat::Json => reporter::json(&findings),
             OutputFormat::Markdown => reporter::markdown(&findings),
             OutputFormat::Pretty => reporter::pretty(&findings),
+            OutputFormat::Sarif => crate::sarif::sarif(&findings),
         };
         println!("{output}");
 
@@ -108,16 +128,14 @@ async fn collect_events(
 ) -> Result<Vec<conan_core::event::Event>> {
     use conan_core::traits::Ingestor;
 
-    // We need a fresh Registry clone per ingestor since they take ownership.
-    // This is acceptable at scan-time (not hot path).
     let mut all_events = vec![];
 
     match args.source {
         ScanSource::Os | ScanSource::All => {
-            let proc = conan_os::ProcessIngestor::new(rebuild_registry(ctx)?);
+            let proc = conan_os::ProcessIngestor::new(ctx.registry.clone());
             all_events.extend(proc.ingest().await?);
 
-            let shell = conan_os::ShellHistoryIngestor::new(rebuild_registry(ctx)?);
+            let shell = conan_os::ShellHistoryIngestor::new(ctx.registry.clone());
             all_events.extend(shell.ingest().await?);
         }
         _ => {}
@@ -125,7 +143,7 @@ async fn collect_events(
 
     match args.source {
         ScanSource::Browser | ScanSource::All => {
-            let browser = conan_os::BrowserHistoryIngestor::new(rebuild_registry(ctx)?);
+            let browser = conan_os::BrowserHistoryIngestor::new(ctx.registry.clone());
             all_events.extend(browser.ingest().await?);
         }
         _ => {}
@@ -133,26 +151,19 @@ async fn collect_events(
 
     match args.source {
         ScanSource::Net | ScanSource::All => {
-            let dns = conan_net::DnsIngestor::new(rebuild_registry(ctx)?);
+            let dns = conan_net::DnsIngestor::new(ctx.registry.clone());
             all_events.extend(dns.ingest().await?);
 
-            let conns = conan_net::ActiveConnectionIngestor::new(rebuild_registry(ctx)?);
+            let conns = conan_net::ActiveConnectionIngestor::new(ctx.registry.clone());
             all_events.extend(conns.ingest().await?);
         }
         _ => {}
     }
 
     if let ScanSource::Codebase = args.source {
-        let cb = conan_os::CodebaseIngestor::new(rebuild_registry(ctx)?, args.path.clone());
+        let cb = conan_os::CodebaseIngestor::new(ctx.registry.clone(), args.path.clone());
         all_events.extend(cb.ingest().await?);
     }
 
     Ok(all_events)
-}
-
-/// Reload the registry from disk to give ownership to each ingestor.
-fn rebuild_registry(_ctx: &ScanContext) -> Result<Registry> {
-    let data_dir = crate::data_dir()?;
-    let sig_dir = data_dir.join("signatures");
-    Ok(Registry::load_from_dir(&sig_dir)?)
 }
