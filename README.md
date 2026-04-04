@@ -676,31 +676,30 @@ See [Contributing a signature](#contributing-a-signature) above.
 
 ## Roadmap
 
-### M1 — "Watcher" (current)
-- [x] Workspace scaffold, CI, release pipeline
+### M1 — "Watcher" ✓ current
+- [x] Workspace scaffold, CI, cross-platform release pipeline
 - [x] `conan-core` traits and types
 - [x] Process, shell history, browser history, codebase ingestors
-- [x] SQLite persistence with migrations
-- [x] 11 bundled signatures
-- [x] `conan scan`, `report`, `signatures`, `policy`, `doctor`
-- [x] JSON, Markdown, and pretty output formats
+- [x] SQLite persistence (`conan-db`)
+- [x] 11 bundled AI service signatures
+- [x] `conan scan`, `report`, `signatures`, `policy`, `doctor`, `status`
+- [x] JSON, Markdown, and pretty-print output formats
+- [x] Background daemon with Unix socket IPC (`conan daemon start/stop`)
+- [x] OS service integration — macOS launchd + Linux systemd (`conan service install`)
 
 ### M2 — "Deep Diver"
-- [ ] `conan-net`: pcap-based packet capture with HTTP header fingerprinting
-- [ ] Background daemon with Unix socket IPC
-- [ ] `conan daemon start/stop` with PID file management
-- [ ] `conan service install` for macOS launchd + Linux systemd
-- [ ] Webhook alerting (Slack + Discord) with debounce
-- [ ] `conan report --live` streaming output
-- [ ] `conan signatures update` (HTTP fetch from GitHub releases)
-- [ ] HTML reporter with risk dashboard
+- [ ] `conan-net`: pcap-based live network capture with HTTP header fingerprinting
+- [ ] `conan signatures update` — pull latest signatures from GitHub releases
+- [ ] `conan report --live` — stream findings from the running daemon
+- [ ] Webhook alerting (Slack + generic HTTP) with per-rule debounce
+- [ ] HTML report with risk summary dashboard
+- [ ] GitHub Action (`conan-action`) with SARIF output for the GitHub Security tab
 
 ### M3 — "Guardian"
-- [ ] GitHub Action (`conan-action`) with SARIF output for GitHub Security tab
-- [ ] WASM build target (`conan-wasm`) — usable in Cloudflare Workers
-- [ ] Risk score thresholds configurable per-policy
-- [ ] `conan scan --source cloud` (AWS CloudTrail, GCP audit logs)
-- [ ] Signature auto-update via cron
+- [ ] Risk score thresholds and per-rule score overrides in policy files
+- [ ] `conan scan --diff` — only re-scan files changed since last run (git-aware)
+- [ ] Signature auto-update on a configurable cron schedule
+- [ ] Plugin API — load custom ingestors as shared libraries without forking
 
 ---
 

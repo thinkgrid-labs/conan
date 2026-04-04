@@ -10,7 +10,11 @@ fn conan() -> Command {
 
 #[test]
 fn help_flag_succeeds() {
-    conan().arg("--help").assert().success().stdout(contains("conan"));
+    conan()
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(contains("conan"));
 }
 
 #[test]

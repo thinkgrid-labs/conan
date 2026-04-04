@@ -63,7 +63,9 @@ fn query_by_hours_includes_recent_finding() {
 fn insert_multiple_all_queryable() {
     let store = Store::in_memory().unwrap();
     for i in 0..5 {
-        store.insert_finding(&finding(&format!("finding {i}"))).unwrap();
+        store
+            .insert_finding(&finding(&format!("finding {i}")))
+            .unwrap();
     }
     assert_eq!(store.query_findings(None).unwrap().len(), 5);
 }
