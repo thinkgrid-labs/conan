@@ -94,21 +94,18 @@ fn browser_profiles() -> Vec<BrowserProfile> {
         let mut profiles: Vec<BrowserProfile> = vec![
             BrowserProfile {
                 name: "Chrome".to_string(),
-                history_path: home
-                    .join(r"AppData\Local\Google\Chrome\User Data\Default\History"),
+                history_path: home.join(r"AppData\Local\Google\Chrome\User Data\Default\History"),
                 query: CHROME_QUERY,
             },
             BrowserProfile {
                 name: "Edge".to_string(),
-                history_path: home
-                    .join(r"AppData\Local\Microsoft\Edge\User Data\Default\History"),
+                history_path: home.join(r"AppData\Local\Microsoft\Edge\User Data\Default\History"),
                 query: CHROME_QUERY,
             },
             BrowserProfile {
                 name: "Brave".to_string(),
-                history_path: home.join(
-                    r"AppData\Local\BraveSoftware\Brave-Browser\User Data\Default\History",
-                ),
+                history_path: home
+                    .join(r"AppData\Local\BraveSoftware\Brave-Browser\User Data\Default\History"),
                 query: CHROME_QUERY,
             },
         ]

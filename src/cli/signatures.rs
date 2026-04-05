@@ -85,11 +85,13 @@ pub async fn run(args: SignatureArgs) -> Result<()> {
             let mut cfg = crate::config::ConanConfig::load(&data_dir)?;
 
             if disable {
-                let sig = cfg.signatures.get_or_insert_with(|| crate::config::SigConfig {
-                    upstream_base: None,
-                    auto_update: None,
-                    update_interval_hours: None,
-                });
+                let sig = cfg
+                    .signatures
+                    .get_or_insert_with(|| crate::config::SigConfig {
+                        upstream_base: None,
+                        auto_update: None,
+                        update_interval_hours: None,
+                    });
                 sig.auto_update = Some(false);
                 cfg.save(&data_dir)?;
                 println!("Signature auto-update disabled.");
@@ -97,11 +99,13 @@ pub async fn run(args: SignatureArgs) -> Result<()> {
             }
 
             if let Some(hours) = set_hours {
-                let sig = cfg.signatures.get_or_insert_with(|| crate::config::SigConfig {
-                    upstream_base: None,
-                    auto_update: None,
-                    update_interval_hours: None,
-                });
+                let sig = cfg
+                    .signatures
+                    .get_or_insert_with(|| crate::config::SigConfig {
+                        upstream_base: None,
+                        auto_update: None,
+                        update_interval_hours: None,
+                    });
                 if hours == 0 {
                     sig.auto_update = Some(false);
                     println!("Signature auto-update disabled.");
@@ -119,22 +123,21 @@ pub async fn run(args: SignatureArgs) -> Result<()> {
             match &cfg.signatures {
                 Some(s) if s.auto_update == Some(true) => {
                     let interval = s.update_interval_hours.unwrap_or(24);
-                    let base = s.upstream_base.as_deref().unwrap_or(sig_updater::UPSTREAM_BASE);
+                    let base = s
+                        .upstream_base
+                        .as_deref()
+                        .unwrap_or(sig_updater::UPSTREAM_BASE);
                     println!("Auto-update:  enabled");
                     println!("Interval:     every {interval} hour(s)");
                     println!("Upstream:     {base}");
                     if state.last_updated_at > 0 {
-                        let dt = chrono::DateTime::from_timestamp(
-                            state.last_updated_at as i64,
-                            0,
-                        )
-                        .map(|t: chrono::DateTime<chrono::Utc>| {
-                            t.format("%Y-%m-%d %H:%M UTC").to_string()
-                        })
-                        .unwrap_or_else(|| "unknown".to_string());
+                        let dt = chrono::DateTime::from_timestamp(state.last_updated_at as i64, 0)
+                            .map(|t: chrono::DateTime<chrono::Utc>| {
+                                t.format("%Y-%m-%d %H:%M UTC").to_string()
+                            })
+                            .unwrap_or_else(|| "unknown".to_string());
                         println!("Last updated: {dt}");
-                        let next_secs =
-                            state.last_updated_at + interval * 3600;
+                        let next_secs = state.last_updated_at + interval * 3600;
                         let next = chrono::DateTime::from_timestamp(next_secs as i64, 0)
                             .map(|t: chrono::DateTime<chrono::Utc>| {
                                 t.format("%Y-%m-%d %H:%M UTC").to_string()

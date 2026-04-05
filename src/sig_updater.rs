@@ -74,16 +74,9 @@ pub async fn maybe_update(
         return false;
     }
 
-    let base = sig_cfg
-        .upstream_base
-        .as_deref()
-        .unwrap_or(UPSTREAM_BASE);
+    let base = sig_cfg.upstream_base.as_deref().unwrap_or(UPSTREAM_BASE);
 
-    tracing::info!(
-        interval_hours,
-        upstream = base,
-        "auto-updating signatures"
-    );
+    tracing::info!(interval_hours, upstream = base, "auto-updating signatures");
 
     match fetch_and_write(sig_dir, base).await {
         Ok((ok, fail)) => {
@@ -127,9 +120,7 @@ pub async fn fetch_and_write(
         match client.get(&url).send().await {
             Ok(resp) if resp.status().is_success() => match resp.text().await {
                 Ok(body) => {
-                    if let Err(e) =
-                        serde_yaml::from_str::<conan_core::registry::Signature>(&body)
-                    {
+                    if let Err(e) = serde_yaml::from_str::<conan_core::registry::Signature>(&body) {
                         eprintln!("  ✗ {filename}: invalid YAML from upstream ({e})");
                         tracing::warn!("{filename}: invalid YAML from upstream: {e}");
                         fail += 1;

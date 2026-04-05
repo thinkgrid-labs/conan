@@ -97,7 +97,10 @@ pub async fn run(args: ScanArgs) -> Result<()> {
         .map(crate::webhook::WebhookClient::from_config);
 
     // --diff: load persisted scan state once before the loop
-    let scan_root = args.path.canonicalize().unwrap_or_else(|_| args.path.clone());
+    let scan_root = args
+        .path
+        .canonicalize()
+        .unwrap_or_else(|_| args.path.clone());
     let mut scan_state = if args.diff {
         crate::diff::ScanState::load(&data_dir)
     } else {
@@ -108,8 +111,7 @@ pub async fn run(args: ScanArgs) -> Result<()> {
         // Compute the set of changed files (only used when --diff + codebase source)
         let diff_filter = if args.diff {
             let commit = crate::diff::current_commit(&scan_root);
-            let changed =
-                crate::diff::changed_files(&scan_root, &scan_state, commit.as_deref());
+            let changed = crate::diff::changed_files(&scan_root, &scan_state, commit.as_deref());
             if changed.is_empty() {
                 eprintln!("--diff: no changed files detected, skipping codebase scan.");
             } else {
