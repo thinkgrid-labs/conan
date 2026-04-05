@@ -85,13 +85,11 @@ pub async fn run(args: SignatureArgs) -> Result<()> {
             let mut cfg = crate::config::ConanConfig::load(&data_dir)?;
 
             if disable {
-                let sig = cfg
-                    .signatures
-                    .get_or_insert(crate::config::SigConfig {
-                        upstream_base: None,
-                        auto_update: None,
-                        update_interval_hours: None,
-                    });
+                let sig = cfg.signatures.get_or_insert(crate::config::SigConfig {
+                    upstream_base: None,
+                    auto_update: None,
+                    update_interval_hours: None,
+                });
                 sig.auto_update = Some(false);
                 cfg.save(&data_dir)?;
                 println!("Signature auto-update disabled.");
@@ -99,13 +97,11 @@ pub async fn run(args: SignatureArgs) -> Result<()> {
             }
 
             if let Some(hours) = set_hours {
-                let sig = cfg
-                    .signatures
-                    .get_or_insert(crate::config::SigConfig {
-                        upstream_base: None,
-                        auto_update: None,
-                        update_interval_hours: None,
-                    });
+                let sig = cfg.signatures.get_or_insert(crate::config::SigConfig {
+                    upstream_base: None,
+                    auto_update: None,
+                    update_interval_hours: None,
+                });
                 if hours == 0 {
                     sig.auto_update = Some(false);
                     println!("Signature auto-update disabled.");
