@@ -53,7 +53,7 @@ impl WebhookClient {
 
         let payload = build_payload(&to_send);
         let url = self.url.clone();
-        let to_send_owned: Vec<Finding> = to_send.iter().map(|f| (*f).clone()).collect();
+        let count = to_send.len();
 
         tokio::spawn(async move {
             let client = match reqwest::Client::builder()
@@ -68,7 +68,7 @@ impl WebhookClient {
             };
             match client.post(&url).json(&payload).send().await {
                 Ok(r) if r.status().is_success() => {
-                    tracing::debug!("webhook: delivered ({} findings)", to_send_owned.len());
+                    tracing::debug!("webhook: delivered ({count} findings)");
                 }
                 Ok(r) => tracing::warn!("webhook: server returned {}", r.status()),
                 Err(e) => tracing::warn!("webhook: delivery failed: {e}"),

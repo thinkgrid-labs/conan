@@ -1,8 +1,23 @@
 version = "1.0"
-# Default action when no rule matches: "allow" | "warn" | "block"
+# Default action when no rule and no threshold matches: "allow" | "warn" | "block"
 mode = "warn"
 
+# ─── Score thresholds (applied after rules, before falling back to mode) ──────
+#
+# If no rule matches, these kick in based on the computed risk score (0–100).
+# block is checked before warn.
+
+[thresholds]
+# Auto-block anything that reaches Critical band (score >= 76).
+block = 90
+# Auto-warn anything that reaches High band (score >= 51).
+warn = 60
+
 # ─── Rules (evaluated top-to-bottom, first match wins) ────────────────────────
+#
+# New fields:
+#   min_score     — rule only fires if the computed score is >= this value
+#   score_override — when this rule matches, pin the finding's score to this value
 
 [[rules]]
 id = "allow-local-models"
@@ -13,10 +28,18 @@ action = "allow"
 
 [[rules]]
 id = "block-dlp-critical"
-description = "Block any AI call where a critical secret (API key, credential) is detected in the payload."
+description = "Block any finding where a critical secret is detected. Escalate score to 95."
 trigger = "dlp_match"
+score_override = 95
 action = "block"
 notify = ["slack"]
+
+[[rules]]
+id = "block-critical-score"
+description = "Block anything that already scores Critical (>= 76), regardless of service."
+trigger = "any"
+min_score = 76
+action = "block"
 
 [[rules]]
 id = "warn-unapproved-cloud-ai"

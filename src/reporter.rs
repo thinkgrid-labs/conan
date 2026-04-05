@@ -21,7 +21,16 @@ pub fn pretty(findings: &[Finding]) -> String {
                     .join(", ")
             )
         };
-        out.push_str(&format!("[{level:<8}]  {service:<20}  {}{dlp}\n", f.detail));
+        let policy = format!("{}", f.policy_action);
+        let rule_hint = f
+            .matched_rule
+            .as_deref()
+            .map(|r| format!(" (rule: {r})"))
+            .unwrap_or_default();
+        out.push_str(&format!(
+            "[{level:<8}] [{policy:<7}]{rule_hint}  {service:<20}  {}{dlp}\n",
+            f.detail
+        ));
     }
     out
 }

@@ -2,23 +2,7 @@ use anyhow::Result;
 use clap::{Args, Subcommand};
 use std::path::PathBuf;
 
-/// Known bundled signature filenames (kept in sync with the `signatures/` directory).
-const SIGNATURE_FILES: &[&str] = &[
-    "anthropic.yaml",
-    "azure-openai.yaml",
-    "cohere.yaml",
-    "google-ai.yaml",
-    "groq.yaml",
-    "huggingface.yaml",
-    "localai.yaml",
-    "mistral.yaml",
-    "ollama.yaml",
-    "openai.yaml",
-    "perplexity.yaml",
-];
-
-const UPSTREAM_BASE: &str =
-    "https://raw.githubusercontent.com/thinkgrid-labs/conan/main/signatures";
+use crate::sig_updater;
 
 #[derive(Args, Debug)]
 pub struct SignatureArgs {
@@ -37,6 +21,15 @@ pub enum SignatureCommands {
         /// Override the upstream base URL.
         #[arg(long)]
         upstream: Option<String>,
+    },
+    /// View or configure the automatic update schedule.
+    Schedule {
+        /// Set the auto-update interval in hours (0 to disable).
+        #[arg(long)]
+        set_hours: Option<u64>,
+        /// Disable automatic signature updates.
+        #[arg(long, conflicts_with = "set_hours")]
+        disable: bool,
     },
 }
 
@@ -75,59 +68,91 @@ pub async fn run(args: SignatureArgs) -> Result<()> {
         }
 
         SignatureCommands::Update { upstream } => {
-            let base = upstream.as_deref().unwrap_or(UPSTREAM_BASE);
+            let base = upstream.as_deref().unwrap_or(sig_updater::UPSTREAM_BASE);
             println!(
                 "Fetching {} signatures from {base} ...",
-                SIGNATURE_FILES.len()
+                sig_updater::SIGNATURE_FILES.len()
             );
-            std::fs::create_dir_all(&sig_dir)?;
-
-            let client = reqwest::Client::builder()
-                .user_agent(concat!("conan/", env!("CARGO_PKG_VERSION")))
-                .timeout(std::time::Duration::from_secs(30))
-                .build()?;
-
-            let mut ok = 0usize;
-            let mut fail = 0usize;
-
-            for filename in SIGNATURE_FILES {
-                let url = format!("{base}/{filename}");
-                match client.get(&url).send().await {
-                    Ok(resp) if resp.status().is_success() => {
-                        match resp.text().await {
-                            Ok(body) => {
-                                // Validate before writing
-                                if let Err(e) =
-                                    serde_yaml::from_str::<conan_core::registry::Signature>(&body)
-                                {
-                                    eprintln!("  ✗ {filename}: invalid YAML ({e})");
-                                    fail += 1;
-                                } else {
-                                    std::fs::write(sig_dir.join(filename), &body)?;
-                                    println!("  ✓ {filename}");
-                                    ok += 1;
-                                }
-                            }
-                            Err(e) => {
-                                eprintln!("  ✗ {filename}: read error ({e})");
-                                fail += 1;
-                            }
-                        }
-                    }
-                    Ok(resp) => {
-                        eprintln!("  ✗ {filename}: HTTP {}", resp.status());
-                        fail += 1;
-                    }
-                    Err(e) => {
-                        eprintln!("  ✗ {filename}: {e}");
-                        fail += 1;
-                    }
-                }
-            }
-
-            println!("\nDone: {ok} updated, {fail} failed.");
+            let (ok, fail) = sig_updater::fetch_and_write(&sig_dir, base).await?;
+            // Print per-file status was already handled via tracing; summarise here
+            println!("Done: {ok} updated, {fail} failed.");
             if fail > 0 {
                 anyhow::bail!("{fail} signature(s) failed to update");
+            }
+        }
+
+        SignatureCommands::Schedule { set_hours, disable } => {
+            let mut cfg = crate::config::ConanConfig::load(&data_dir)?;
+
+            if disable {
+                let sig = cfg.signatures.get_or_insert_with(|| crate::config::SigConfig {
+                    upstream_base: None,
+                    auto_update: None,
+                    update_interval_hours: None,
+                });
+                sig.auto_update = Some(false);
+                cfg.save(&data_dir)?;
+                println!("Signature auto-update disabled.");
+                return Ok(());
+            }
+
+            if let Some(hours) = set_hours {
+                let sig = cfg.signatures.get_or_insert_with(|| crate::config::SigConfig {
+                    upstream_base: None,
+                    auto_update: None,
+                    update_interval_hours: None,
+                });
+                if hours == 0 {
+                    sig.auto_update = Some(false);
+                    println!("Signature auto-update disabled.");
+                } else {
+                    sig.auto_update = Some(true);
+                    sig.update_interval_hours = Some(hours);
+                    println!("Signature auto-update set to every {hours} hour(s).");
+                }
+                cfg.save(&data_dir)?;
+                return Ok(());
+            }
+
+            // No flags: show current schedule
+            let state = sig_updater::SigUpdateState::load(&data_dir);
+            match &cfg.signatures {
+                Some(s) if s.auto_update == Some(true) => {
+                    let interval = s.update_interval_hours.unwrap_or(24);
+                    let base = s.upstream_base.as_deref().unwrap_or(sig_updater::UPSTREAM_BASE);
+                    println!("Auto-update:  enabled");
+                    println!("Interval:     every {interval} hour(s)");
+                    println!("Upstream:     {base}");
+                    if state.last_updated_at > 0 {
+                        let dt = chrono::DateTime::from_timestamp(
+                            state.last_updated_at as i64,
+                            0,
+                        )
+                        .map(|t: chrono::DateTime<chrono::Utc>| {
+                            t.format("%Y-%m-%d %H:%M UTC").to_string()
+                        })
+                        .unwrap_or_else(|| "unknown".to_string());
+                        println!("Last updated: {dt}");
+                        let next_secs =
+                            state.last_updated_at + interval * 3600;
+                        let next = chrono::DateTime::from_timestamp(next_secs as i64, 0)
+                            .map(|t: chrono::DateTime<chrono::Utc>| {
+                                t.format("%Y-%m-%d %H:%M UTC").to_string()
+                            })
+                            .unwrap_or_else(|| "unknown".to_string());
+                        println!("Next update:  {next}");
+                    } else {
+                        println!("Last updated: never");
+                    }
+                }
+                Some(s) if s.auto_update == Some(false) => {
+                    println!("Auto-update:  disabled");
+                    println!("Tip: enable with `conan signatures schedule --set-hours 24`");
+                }
+                _ => {
+                    println!("Auto-update:  not configured (default: disabled)");
+                    println!("Tip: enable with `conan signatures schedule --set-hours 24`");
+                }
             }
         }
     }

@@ -6,6 +6,7 @@ use conan_core::{
     traits::Ingestor,
 };
 use regex::Regex;
+use std::collections::HashSet;
 use std::path::PathBuf;
 use tracing::debug;
 use walkdir::WalkDir;
@@ -32,6 +33,8 @@ pub struct CodebaseIngestor {
     pub registry: Registry,
     pub root: PathBuf,
     compiled_patterns: Vec<(String, Regex)>,
+    /// When set, only files whose canonical path appears in this set are scanned.
+    filter: Option<HashSet<PathBuf>>,
 }
 
 impl CodebaseIngestor {
@@ -45,7 +48,14 @@ impl CodebaseIngestor {
             registry,
             root,
             compiled_patterns,
+            filter: None,
         }
+    }
+
+    /// Restrict scanning to the given set of absolute file paths.
+    pub fn with_filter(mut self, filter: HashSet<PathBuf>) -> Self {
+        self.filter = Some(filter);
+        self
     }
 }
 
@@ -76,6 +86,14 @@ impl Ingestor for CodebaseIngestor {
                 s.starts_with('.') || s == "node_modules" || s == "target" || s == "dist"
             }) {
                 continue;
+            }
+
+            // When a filter is active, skip files not in the changed-file set.
+            if let Some(ref allowed) = self.filter {
+                let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+                if !allowed.contains(&canonical) && !allowed.contains(path) {
+                    continue;
+                }
             }
 
             let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");

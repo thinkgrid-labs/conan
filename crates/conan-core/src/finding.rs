@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 pub use crate::risk::RiskLevel;
-use crate::{event::Event, registry::Signature, risk::RiskScore};
+use crate::{event::Event, policy::PolicyAction, registry::Signature, risk::RiskScore};
 
 /// A DLP (Data Loss Prevention) match found in an event payload.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,6 +33,10 @@ pub struct Finding {
     pub risk_level: RiskLevel,
     pub dlp_matches: Vec<DlpMatch>,
     pub detail: String,
+    /// The policy action applied to this finding.
+    pub policy_action: PolicyAction,
+    /// The policy rule that triggered the action, if any.
+    pub matched_rule: Option<String>,
 }
 
 #[cfg(test)]
@@ -159,6 +163,28 @@ impl Finding {
             dlp_matches,
             detail,
             event,
+            policy_action: PolicyAction::Warn, // overwritten by with_policy()
+            matched_rule: None,
         }
+    }
+
+    /// Apply policy evaluation results to this finding.
+    ///
+    /// - `action` — the policy decision (allow / warn / block)
+    /// - `matched_rule` — the rule ID that triggered the action
+    /// - `score_override` — if `Some`, replaces the computed risk score and level
+    pub fn with_policy(
+        mut self,
+        action: PolicyAction,
+        matched_rule: Option<String>,
+        score_override: Option<u8>,
+    ) -> Self {
+        self.policy_action = action;
+        self.matched_rule = matched_rule;
+        if let Some(s) = score_override {
+            self.risk_score = RiskScore(s.min(100));
+            self.risk_level = self.risk_score.level();
+        }
+        self
     }
 }

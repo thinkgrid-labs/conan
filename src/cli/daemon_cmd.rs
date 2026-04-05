@@ -27,10 +27,14 @@ pub enum DaemonCommands {
     },
 }
 
-fn terminate_process(pid: u32) {
+fn terminate_process(pid: u32) -> Result<()> {
     #[cfg(unix)]
     unsafe {
-        libc::kill(pid as i32, libc::SIGTERM);
+        let rc = libc::kill(pid as i32, libc::SIGTERM);
+        if rc != 0 {
+            let err = std::io::Error::last_os_error();
+            anyhow::bail!("kill({pid}, SIGTERM) failed: {err}");
+        }
     }
 
     #[cfg(windows)]
@@ -40,11 +44,19 @@ fn terminate_process(pid: u32) {
             OpenProcess, TerminateProcess, PROCESS_TERMINATE,
         };
         let handle = OpenProcess(PROCESS_TERMINATE, 0, pid);
-        if !handle.is_null() {
-            TerminateProcess(handle, 1);
-            CloseHandle(handle);
+        if handle.is_null() {
+            let err = std::io::Error::last_os_error();
+            anyhow::bail!("OpenProcess({pid}) failed: {err}");
+        }
+        let ok = TerminateProcess(handle, 1);
+        CloseHandle(handle);
+        if ok == 0 {
+            let err = std::io::Error::last_os_error();
+            anyhow::bail!("TerminateProcess({pid}) failed: {err}");
         }
     }
+
+    Ok(())
 }
 
 pub async fn run(args: DaemonArgs) -> Result<()> {
@@ -87,7 +99,7 @@ pub async fn run(args: DaemonArgs) -> Result<()> {
                 return Ok(());
             }
             let pid: u32 = std::fs::read_to_string(&pid_file)?.trim().parse()?;
-            terminate_process(pid);
+            terminate_process(pid)?;
             std::fs::remove_file(&pid_file)?;
             println!("Terminated daemon (pid {pid}).");
         }
@@ -95,7 +107,9 @@ pub async fn run(args: DaemonArgs) -> Result<()> {
         DaemonCommands::Restart => {
             if pid_file.exists() {
                 let pid: u32 = std::fs::read_to_string(&pid_file)?.trim().parse()?;
-                terminate_process(pid);
+                if let Err(e) = terminate_process(pid) {
+                    eprintln!("Warning: could not terminate daemon (pid {pid}): {e}");
+                }
                 std::fs::remove_file(&pid_file)?;
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             }
@@ -168,6 +182,9 @@ pub async fn run_inner() -> Result<()> {
     );
 
     loop {
+        // Auto-update signatures if the schedule is due
+        crate::sig_updater::maybe_update(&cfg, &data_dir, &sig_dir).await;
+
         let registry = match Registry::load_from_dir(&sig_dir) {
             Ok(r) => r,
             Err(e) => {
