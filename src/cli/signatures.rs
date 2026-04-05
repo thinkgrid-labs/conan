@@ -87,7 +87,7 @@ pub async fn run(args: SignatureArgs) -> Result<()> {
             if disable {
                 let sig = cfg
                     .signatures
-                    .get_or_insert_with(|| crate::config::SigConfig {
+                    .get_or_insert(crate::config::SigConfig {
                         upstream_base: None,
                         auto_update: None,
                         update_interval_hours: None,
@@ -101,7 +101,7 @@ pub async fn run(args: SignatureArgs) -> Result<()> {
             if let Some(hours) = set_hours {
                 let sig = cfg
                     .signatures
-                    .get_or_insert_with(|| crate::config::SigConfig {
+                    .get_or_insert(crate::config::SigConfig {
                         upstream_base: None,
                         auto_update: None,
                         update_interval_hours: None,
