@@ -244,12 +244,15 @@ Run a one-shot scan against one or more sources.
 conan scan [OPTIONS]
 
 Options:
-  -s, --source <SOURCE>   Sources: net | os | browser | shell | codebase | all  [default: all]
-  -p, --policy <PATH>     Path to policy TOML file
-  -o, --output <FORMAT>   Output format: pretty | json | markdown  [default: pretty]
-      --path <PATH>       Root path for codebase scanning  [default: .]
-  -w, --watch <SECS>      Re-scan every N seconds (continuous mode)
-  -v, --verbose           Enable debug output
+  -s, --source <SOURCE>      Sources: net | os | browser | shell | codebase | pcap | all  [default: all]
+  -p, --policy <PATH>        Path to policy TOML file
+  -o, --output <FORMAT>      Output format: pretty | json | markdown | sarif  [default: pretty]
+      --path <PATH>          Root path for codebase scanning  [default: .]
+  -w, --watch <SECS>         Re-scan every N seconds (continuous mode)
+      --diff                 Only re-scan files changed since last run (git-aware; codebase source)
+      --pcap-secs <SECS>     Duration for live packet capture (--source pcap)  [default: 10]
+      --pcap-iface <IFACE>   Network interface for pcap capture (--source pcap)
+  -v, --verbose              Enable debug output
 ```
 
 **Examples:**
@@ -261,13 +264,22 @@ conan scan --source os
 # Network scan with JSON output (good for SIEM pipelines)
 conan scan --source net --output json | jq '.[] | select(.risk_level == "CRITICAL")'
 
+# Codebase scan from CI — output SARIF for GitHub Code Scanning
+conan scan --source codebase --path . --output sarif > results.sarif
+
 # Codebase scan from CI — fail on any finding with risk >= high
 conan scan --source codebase --path . --output json \
   | jq 'map(select(.risk_score >= 51)) | length' \
   | xargs -I{} test {} -eq 0
 
+# Incremental scan — only re-scan files changed since last run
+conan scan --source codebase --path . --diff
+
 # Continuous monitoring every minute
 conan scan --source all --watch 60
+
+# Live packet capture for 30 seconds on a specific interface
+conan scan --source pcap --pcap-secs 30 --pcap-iface en0
 
 # Markdown report piped to a file
 conan scan --source all --output markdown > ai-report.md
@@ -283,8 +295,9 @@ Query findings stored in the local SQLite database.
 conan report [OPTIONS]
 
 Options:
-      --last <HOURS>   Show findings from the last N hours
-      --live           Stream new findings in real-time (requires daemon)
+      --last <HOURS>     Show findings from the last N hours
+      --live             Stream new findings in real-time (polls DB every second)
+      --format <FORMAT>  Output format: pretty | json | markdown | html  [default: pretty]
 ```
 
 **Examples:**
@@ -293,19 +306,22 @@ Options:
 # Show all findings from the last 24 hours
 conan report --last 24
 
-# Show all stored findings
-conan report
+# Show all stored findings as JSON
+conan report --format json
+
+# Generate a self-contained HTML report
+conan report --format html > report.html
 
 # Stream live findings from the daemon
 conan report --live
 ```
 
-**Output format:**
+**Pretty output:**
 
 ```
-[CRITICAL]   openai               openai — API key pattern in request body
-[HIGH    ]   anthropic            anthropic — unapproved service detected
-[LOW     ]   ollama               ollama — process running (pid 8821)
+[CRITICAL]  [BLOCKED ]  (rule: block-dlp-critical)  openai               openai — API key in cmdline
+[HIGH    ]  [WARN    ]  (rule: warn-unapproved-cloud)  anthropic          anthropic — process 'anthropic' running (pid 4821)
+[LOW     ]  [ALLOWED ]                                 ollama             ollama — process running (pid 8821)
 ```
 
 ---
@@ -389,9 +405,12 @@ Manage AI service signature files.
 conan signatures <COMMAND>
 
 Commands:
-  list              List all loaded signatures
-  validate <FILE>   Validate a signature YAML file for correctness
-  update            Fetch the latest signatures from upstream
+  list                    List all loaded signatures
+  validate <FILE>         Validate a signature YAML file for correctness
+  update                  Fetch the latest signatures from upstream
+  schedule                View or configure automatic update schedule
+    --set-hours <N>       Enable auto-update every N hours (0 = disable)
+    --disable             Disable automatic updates
 ```
 
 **Examples:**
@@ -403,8 +422,20 @@ conan signatures list
 # Validate a new signature before submitting a PR
 conan signatures validate signatures/my-new-service.yaml
 
-# Pull the latest signature updates
+# Pull the latest signature updates manually
 conan signatures update
+
+# Enable automatic updates every 24 hours (runs via daemon)
+conan signatures schedule --set-hours 24
+
+# Change to every 6 hours
+conan signatures schedule --set-hours 6
+
+# Show the current auto-update schedule and last-updated time
+conan signatures schedule
+
+# Disable auto-update
+conan signatures schedule --disable
 ```
 
 **`signatures list` output:**
@@ -529,8 +560,20 @@ webhook_url = "${CONAN_DISCORD_WEBHOOK}"
 | `trigger` | string | `ai_detected` \| `dlp_match` \| `any` |
 | `exclude_ids` | list | Signature IDs exempt from this rule |
 | `tags` | list | Only match signatures with these tags |
+| `min_score` | integer | Only fire if the computed risk score is ≥ this value (0–100) |
 | `action` | string | `allow` \| `warn` \| `block` |
 | `notify` | list | Channels to alert: `slack`, `discord` |
+| `score_override` | integer | Pin the finding's risk score to this value when the rule matches |
+
+### Score Thresholds
+
+Applied after rules, before falling back to `mode`. Useful as a safety net without writing individual rules:
+
+```toml
+[thresholds]
+block = 90   # auto-block anything scoring ≥ 90 (no rule needed)
+warn  = 60   # auto-warn anything scoring ≥ 60
+```
 
 ---
 
@@ -652,7 +695,12 @@ conan/
 ├── src/
 │   ├── main.rs                 # CLI entry point, data_dir()
 │   ├── analyzer.rs             # analysis engine (signature + DLP matching)
-│   ├── reporter.rs             # pretty / json / markdown output
+│   ├── reporter.rs             # pretty / json / markdown / html output
+│   ├── sarif.rs                # SARIF 2.1.0 output builder
+│   ├── webhook.rs              # HTTP webhook client with per-service debounce
+│   ├── config.rs               # ~/.conan/config.toml loader
+│   ├── diff.rs                 # git-aware incremental scan state
+│   ├── sig_updater.rs          # signature auto-update scheduler
 │   └── cli/
 │       ├── mod.rs              # Cli struct + Commands enum (clap)
 │       ├── scan.rs             # conan scan
@@ -665,58 +713,73 @@ conan/
 │       └── doctor.rs           # conan doctor
 ├── crates/
 │   ├── conan-core/             # traits, types, registry, policy engine, risk scoring
-│   ├── conan-net/              # DNS lookup + active connection ingestors
+│   ├── conan-net/              # DNS, active connections, pcap capture (optional feature)
 │   ├── conan-os/               # process, shell history, browser history, codebase ingestors
 │   └── conan-db/               # SQLite store (rusqlite + migrations)
 ├── signatures/                 # YAML AI service fingerprints (community-contributed)
 ├── policy/
 │   └── default.toml            # starter policy file
 └── .github/
-    └── workflows/
-        ├── ci.yml              # test + clippy + signature validation on every PR
-        └── release.yml         # cross-platform binary builds on tag push
+    ├── workflows/
+    │   ├── ci.yml              # test + clippy + signature validation on every PR
+    │   └── release.yml         # cross-platform binary builds on tag push
+    ├── ISSUE_TEMPLATE/         # bug, feature, and signature-request templates
+    └── action.yml              # conan-action: scan codebase + upload SARIF
 ```
 
 ### Crate responsibilities
 
 | Crate | Responsibility |
 |-------|---------------|
-| `conan-core` | `Ingestor`, `Analyzer`, `Reporter` traits; `Event`, `Finding`, `Signature`, `Policy`, `RiskScore` types |
+| `conan-core` | `Ingestor`, `Analyzer` traits; `Event`, `Finding`, `Signature`, `Policy`, `RiskScore` types |
 | `conan-os` | `ProcessIngestor`, `ShellHistoryIngestor`, `BrowserHistoryIngestor`, `CodebaseIngestor` |
-| `conan-net` | `DnsIngestor`, `ActiveConnectionIngestor` |
-| `conan-db` | `Store::open`, `insert_finding`, `query_findings`, `finding_count_today` |
+| `conan-net` | `DnsIngestor`, `ActiveConnectionIngestor`; `PcapIngestor` (opt-in via `--features pcap-capture`) |
+| `conan-db` | `Store::open`, `insert_finding`, `query_findings`, `query_findings_since`, `finding_count_today` |
 
 ---
 
 ## Configuration
 
-The daemon reads `~/.conan/config.toml`:
+Conan reads `~/.conan/config.toml` for daemon, webhook, and signature settings. All fields are optional — conan works without a config file.
 
 ```toml
 [daemon]
-poll_interval_secs = 10         # how often to poll OS processes
-net_interface = "en0"           # network interface for packet capture
-log_level = "info"              # error | warn | info | debug
-socket_path = "/tmp/conan.sock" # Unix socket for CLI↔daemon IPC
+# Seconds between scan cycles. Default: 300 (5 minutes).
+scan_interval_secs = 300
+
+[webhook]
+# HTTP endpoint for finding alerts (Slack, Discord, or any webhook receiver).
+url = "${CONAN_WEBHOOK_URL}"
+# Minimum seconds between repeated alerts for the same service. Default: 30.
+debounce_secs = 60
 
 [signatures]
+# Enable automatic signature updates. Runs on each daemon cycle when due.
 auto_update = true
-update_schedule = "0 3 * * *"  # nightly at 3am (cron syntax)
+# How often to auto-update (hours). Default: 24.
+update_interval_hours = 24
+# Override the upstream URL (optional — defaults to the official GitHub repo).
+# upstream_base = "https://raw.githubusercontent.com/thinkgrid-labs/conan/main/signatures"
+```
 
-[policy]
-path = "~/.conan/policy.toml"
+All settings can also be managed via CLI commands:
 
-[alerts]
-debounce_secs = 300             # suppress re-alerts for the same service within 5 min
+```bash
+# Configure signature auto-update schedule
+conan signatures schedule --set-hours 24
+
+# Show current schedule and last-updated time
+conan signatures schedule
 ```
 
 ### Environment variables
 
 | Variable | Description |
 |----------|-------------|
-| `CONAN_SLACK_WEBHOOK` | Slack incoming webhook URL |
-| `CONAN_DISCORD_WEBHOOK` | Discord webhook URL |
-| `RUST_LOG` | Log filter (e.g. `conan=debug`) |
+| `CONAN_WEBHOOK_URL` | Webhook URL override (takes precedence over config.toml) |
+| `CONAN_SLACK_WEBHOOK` | Slack incoming webhook URL (used by policy `notify = ["slack"]`) |
+| `CONAN_DISCORD_WEBHOOK` | Discord webhook URL (used by policy `notify = ["discord"]`) |
+| `RUST_LOG` | Log filter (e.g. `conan=debug`, `warn`) |
 
 ---
 
@@ -750,31 +813,35 @@ See [Contributing a signature](#contributing-a-signature) above.
 
 ## Roadmap
 
-### M1 — "Watcher" ✓
-- [x] Workspace scaffold, CI, cross-platform release pipeline
-- [x] `conan-core` traits and types
-- [x] Process, shell history, browser history, codebase ingestors
-- [x] SQLite persistence (`conan-db`)
-- [x] 11 bundled AI service signatures
-- [x] `conan scan`, `report`, `signatures`, `policy`, `doctor`, `status`
-- [x] JSON, Markdown, and pretty-print output formats
-- [x] Background daemon with Unix socket IPC (`conan daemon start/stop`)
-- [x] OS service integration — macOS launchd + Linux systemd (`conan service install`)
+Conan covers the core detection and governance loop. Here are the high-impact areas being considered for future releases — contributions welcome.
 
-### M2 — "Deep Diver" ✓
-- [x] `conan signatures update` — pull latest signatures from GitHub
-- [x] `conan report --live` — stream new findings from the DB in real time
-- [x] `conan report --format html` — self-contained HTML report with risk dashboard
-- [x] `conan scan --output sarif` — SARIF 2.1.0 output for GitHub Code Scanning
-- [x] Webhook alerting (Slack + generic HTTP) with per-service debounce
-- [x] GitHub Action (`conan-action`) — scan codebase and upload SARIF in CI
-- [x] `conan-net`: pcap-based live network capture with HTTP header + TLS SNI fingerprinting (`--features pcap-capture`)
+### Detection & Coverage
 
-### M3 — "Guardian"
-- [ ] Risk score thresholds and per-rule score overrides in policy files
-- [ ] `conan scan --diff` — only re-scan files changed since last run (git-aware)
-- [ ] Signature auto-update on a configurable cron schedule
-- [ ] Plugin API — load custom ingestors as shared libraries without forking
+- **`conan scan --source env`** — Scan environment variables and `.env` files for live API keys; catches secrets that never touch the codebase but are present in the running environment.
+- **`conan scan --source git-history`** — Walk the full git commit history of a repository to find API keys that were committed and later deleted; surfaces secrets that `--diff` would miss.
+- **Container & Kubernetes support** — Scan running containers and pod environment variables for AI service connections; particularly useful in multi-tenant clusters where shadow AI can appear in any namespace.
+- **Expanded signature library** — Coverage for Cohere, Together AI, Replicate, AWS Bedrock, Fireworks, and other emerging inference providers; IP range matching for cloud AI endpoints.
+
+### Policy & Enforcement
+
+- **OPA / Rego integration** — Allow enterprise teams to write governance rules in Open Policy Agent's Rego language rather than conan's TOML format, enabling re-use of existing policy infrastructure.
+- **Policy drift detection** — Track policy changes over time and alert when a previously blocked service becomes allowed (or vice versa); useful for audit trails and SOC 2 compliance.
+- **`conan scan --block`** — Exit with a non-zero code when any `block`-action finding is produced, making policy enforcement a hard gate in CI/CD without needing `jq` post-processing.
+- **Per-repository policy files** — Load `.conan/policy.toml` from the scanned directory and merge it with the global policy; allows teams to self-serve governance rules within guardrails set by security.
+
+### Alerting & Integrations
+
+- **Email alerts** — SMTP-based alert delivery for organisations that don't use Slack or Discord.
+- **PagerDuty / OpsGenie integration** — Route critical findings (score ≥ 76) directly to on-call, matching the severity model already built into the policy engine.
+- **SIEM export (`conan export`)** — Emit findings as CEF, Syslog, or OCSF events for ingestion into Splunk, Elastic SIEM, or Microsoft Sentinel.
+- **GitHub App** — Post finding summaries as PR review comments so developers see results without leaving GitHub; complements the existing GitHub Action.
+
+### Developer Experience
+
+- **Local web dashboard (`conan serve`)** — A lightweight local web server (no cloud) showing findings over time, risk trends, and per-service breakdowns; replaces `conan report --format html` for interactive use.
+- **VSCode / JetBrains extension** — Real-time DLP and API key highlighting as you type, backed by conan's existing codebase scanner and signature set.
+- **`conan init`** — Interactive setup wizard: downloads signatures, generates a starter `policy.toml` tailored to the detected tech stack, and optionally installs the daemon as a system service.
+- **Plugin API** — A stable `Ingestor` and `Analyzer` plugin interface so third parties can add new sources (e.g., Jupyter notebooks, Terraform state files) without forking the binary.
 
 ---
 

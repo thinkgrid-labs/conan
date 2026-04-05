@@ -23,7 +23,25 @@ impl Analyzer for CoreAnalyzer {
 
             let detail = build_detail(&event, signature.as_ref().map(|s| s.name.as_str()));
             let finding = Finding::new(event, signature.as_ref(), dlp_matches, detail);
-            debug!(id = %finding.id, risk = %finding.risk_score.0, "finding created");
+
+            // Apply policy: evaluate rules + thresholds against the computed score
+            let sig_id = finding.signature_id.as_deref().unwrap_or("unknown");
+            let tags: Vec<String> = signature
+                .as_ref()
+                .map(|s| s.tags.clone())
+                .unwrap_or_default();
+            let has_dlp = !finding.dlp_matches.is_empty();
+            let (action, rule_id, score_override) =
+                ctx.policy
+                    .evaluate(sig_id, &tags, has_dlp, finding.risk_score.0);
+            let finding = finding.with_policy(action, rule_id, score_override);
+
+            debug!(
+                id = %finding.id,
+                risk = %finding.risk_score.0,
+                policy = %finding.policy_action,
+                "finding created"
+            );
             findings.push(finding);
         }
 

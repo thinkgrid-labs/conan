@@ -63,10 +63,21 @@ impl Registry {
             let entry = entry.map_err(ConanError::Io)?;
             let path = entry.path();
             if path.extension().and_then(|e| e.to_str()) == Some("yaml") {
-                let content = std::fs::read_to_string(&path).map_err(ConanError::Io)?;
-                let sig: Signature = serde_yaml::from_str(&content)
-                    .map_err(|e| ConanError::SignatureParse(e.to_string()))?;
-                registry.insert(sig);
+                let content = match std::fs::read_to_string(&path) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        tracing::warn!(path = %path.display(), "failed to read signature file: {e}");
+                        continue;
+                    }
+                };
+                match serde_yaml::from_str::<Signature>(&content) {
+                    Ok(sig) => {
+                        registry.insert(sig);
+                    }
+                    Err(e) => {
+                        tracing::warn!(path = %path.display(), "invalid signature YAML, skipping: {e}");
+                    }
+                }
             }
         }
 

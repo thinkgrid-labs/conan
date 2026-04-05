@@ -59,6 +59,10 @@ pub struct ScanArgs {
     /// Network interface for pcap capture (--source pcap only). Default: system default.
     #[arg(long)]
     pub pcap_iface: Option<String>,
+
+    /// Only re-scan files changed since the last run (git-aware, codebase source only).
+    #[arg(long, default_value = "false")]
+    pub diff: bool,
 }
 
 pub async fn run(args: ScanArgs) -> Result<()> {
@@ -92,8 +96,33 @@ pub async fn run(args: ScanArgs) -> Result<()> {
         .as_ref()
         .map(crate::webhook::WebhookClient::from_config);
 
+    // --diff: load persisted scan state once before the loop
+    let scan_root = args
+        .path
+        .canonicalize()
+        .unwrap_or_else(|_| args.path.clone());
+    let mut scan_state = if args.diff {
+        crate::diff::ScanState::load(&data_dir)
+    } else {
+        crate::diff::ScanState::default()
+    };
+
     loop {
-        let events = collect_events(&args, &ctx).await?;
+        // Compute the set of changed files (only used when --diff + codebase source)
+        let diff_filter = if args.diff {
+            let commit = crate::diff::current_commit(&scan_root);
+            let changed = crate::diff::changed_files(&scan_root, &scan_state, commit.as_deref());
+            if changed.is_empty() {
+                eprintln!("--diff: no changed files detected, skipping codebase scan.");
+            } else {
+                eprintln!("--diff: {} changed file(s) will be scanned.", changed.len());
+            }
+            Some(changed)
+        } else {
+            None
+        };
+
+        let events = collect_events(&args, &ctx, diff_filter.as_ref()).await?;
         let analyzer = CoreAnalyzer;
         let findings = analyzer.analyze(events, &ctx).await;
 
@@ -124,6 +153,16 @@ pub async fn run(args: ScanArgs) -> Result<()> {
         };
         println!("{output}");
 
+        // Persist --diff state after each pass
+        if args.diff {
+            let commit = crate::diff::current_commit(&scan_root);
+            scan_state.last_commit = commit;
+            scan_state.mtimes = crate::diff::snapshot_mtimes(&scan_root);
+            if let Err(e) = scan_state.save(&data_dir) {
+                eprintln!("Warning: failed to save scan state: {e}");
+            }
+        }
+
         match args.watch {
             Some(secs) => tokio::time::sleep(tokio::time::Duration::from_secs(secs)).await,
             None => break,
@@ -136,6 +175,7 @@ pub async fn run(args: ScanArgs) -> Result<()> {
 async fn collect_events(
     args: &ScanArgs,
     ctx: &ScanContext,
+    diff_filter: Option<&std::collections::HashSet<std::path::PathBuf>>,
 ) -> Result<Vec<conan_core::event::Event>> {
     use conan_core::traits::Ingestor;
 
@@ -171,8 +211,11 @@ async fn collect_events(
         _ => {}
     }
 
-    if let ScanSource::Codebase = args.source {
-        let cb = conan_os::CodebaseIngestor::new(ctx.registry.clone(), args.path.clone());
+    if matches!(args.source, ScanSource::Codebase | ScanSource::All) {
+        let mut cb = conan_os::CodebaseIngestor::new(ctx.registry.clone(), args.path.clone());
+        if let Some(filter) = diff_filter {
+            cb = cb.with_filter(filter.clone());
+        }
         all_events.extend(cb.ingest().await?);
     }
 

@@ -118,6 +118,13 @@ fn print_markdown(findings: &[serde_json::Value]) {
     }
 }
 
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
 fn html_from_values(findings: &[serde_json::Value]) -> String {
     let rows: String = findings
         .iter()
@@ -129,9 +136,9 @@ fn html_from_values(findings: &[serde_json::Value]) -> String {
                 "MEDIUM" => "#ffc107",
                 _ => "#4caf50",
             };
-            let service = f["service_name"].as_str().unwrap_or("unknown");
-            let detail = f["detail"].as_str().unwrap_or("");
-            let ts = f["timestamp"].as_str().unwrap_or("");
+            let service = html_escape(f["service_name"].as_str().unwrap_or("unknown"));
+            let detail = html_escape(f["detail"].as_str().unwrap_or(""));
+            let ts = html_escape(f["timestamp"].as_str().unwrap_or(""));
             format!(
                 r#"<tr><td style="background:{color};color:#fff;font-weight:bold;padding:4px 8px">{level}</td><td>{service}</td><td>{detail}</td><td style="color:#888;font-size:0.9em">{ts}</td></tr>"#
             )

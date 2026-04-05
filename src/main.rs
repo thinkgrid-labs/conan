@@ -1,8 +1,10 @@
 mod analyzer;
 mod cli;
 mod config;
+mod diff;
 mod reporter;
 mod sarif;
+mod sig_updater;
 mod webhook;
 
 use anyhow::Result;

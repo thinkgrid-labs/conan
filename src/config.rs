@@ -24,9 +24,20 @@ pub struct DaemonConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SigConfig {
     pub upstream_base: Option<String>,
+    /// Enable automatic signature updates on a schedule.
+    pub auto_update: Option<bool>,
+    /// How often to auto-update (hours). Default: 24.
+    pub update_interval_hours: Option<u64>,
 }
 
 impl ConanConfig {
+    pub fn save(&self, data_dir: &Path) -> anyhow::Result<()> {
+        let path = data_dir.join("config.toml");
+        let content = toml::to_string_pretty(self)?;
+        std::fs::write(path, content)?;
+        Ok(())
+    }
+
     pub fn load(data_dir: &Path) -> anyhow::Result<Self> {
         let path = data_dir.join("config.toml");
         if !path.exists() {
